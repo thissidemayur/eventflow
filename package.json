@@ -1,12 +1,11 @@
 {
-  "name": "3-eventflow",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "eventflow",
+  "private": true,
+  "workspaces":["app/*","packages/*"],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:api": "npm -w app/api run dev",
+    "dev:worker": "npm -w app/worker run dev"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  
+  "packageManager": "npm@10.9.4"
 }
