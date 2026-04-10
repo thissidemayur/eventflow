@@ -1,11 +1,13 @@
 {
   "name": "eventflow",
   "private": true,
-  "workspaces":["app/*","packages/*"],
+  "workspaces": [
+    "app/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev:api": "npm -w app/api run dev",
-    "dev:worker": "npm -w app/worker run dev"
+    "dev:api": "npm run dev -w eventflow/api*",
+    "dev:worker": "npm run dev -w eventflow/worker* "
   },
-  
   "packageManager": "npm@10.9.4"
 }
