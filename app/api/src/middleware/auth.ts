@@ -16,12 +16,11 @@ export async function authMiddleware(
     where: { keyHash: hashed },
   });
 
-  
-
-
   if (!keyRecord || !keyRecord.active) {
     return res.status(401).json({ error: "Invalid API key" });
   }
 
+  req.apiKeyId = keyRecord.id
+  req.tenantId = keyRecord.tenantId
   return next();
 }
