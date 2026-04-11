@@ -1,0 +1,20 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ApiKey {
+  id String @id @default(uuid())
+  keyHash String @unique @map("key_hash")
+  tenantId String @map("tenant_in")
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("api_keys")
+}
