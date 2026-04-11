@@ -10,6 +10,6 @@
   "scripts": {
     "build": "tsc",
     "generate": "prisma generate",
-    "dev": "prisma generate --watch"
+    "dev": "prisma generate --watch "
   }
 }
