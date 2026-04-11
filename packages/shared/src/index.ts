@@ -1,2 +1,3 @@
 
-export * from "./lib/apiKey.js"
+export * from "./lib/apiKey"
+export * from "./types/schema"
