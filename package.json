@@ -5,10 +5,15 @@
     "app/*",
     "packages/*"
   ],
+  
   "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
     "dev:api": "npm run dev -w @eventflow/api",
-    "dev:worker": "npm run dev -w @eventflow/worker ",
-    "build": "npm run build -w @eventflow/shared && npm run build -w @eventflow/db"
+    "dev:worker": "npm run dev -w @eventflow/worker"
   },
-  "packageManager": "npm@10.9.4"
+  "devDependencies": {
+    "dotenv-cli": "7.4.2",
+    "typescript": "5.4.5"
+  }
 }

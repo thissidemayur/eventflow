@@ -1,33 +1,21 @@
 {
   "compilerOptions": {
-    // --- Output shape ---
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "outDir": "dist",
-    "rootDir": "src",
+    "lib": ["ES2022"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-
-    // --- Type safety (never turn these off) ---
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "forceConsistentCasingInFileNames": true,
-
-    // --- Module interop ---
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-
-    "baseUrl": ".", //remove in ts7
-    "paths": {
-      "@eventflow/db": ["packages/db/src"],
-      "@eventflow/shared": ["packages/shared/src"]
-    },
-    "ignoreDeprecations": "6.0"
+    "composite": true
   }
 }
