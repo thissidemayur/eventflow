@@ -8,6 +8,8 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "generate": "prisma generate",
+    "dev": "prisma generate --watch"
   }
 }

@@ -21,6 +21,13 @@
     // --- Module interop ---
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+
+    "baseUrl": ".", //remove in ts7
+    "paths": {
+      "@eventflow/db": ["packages/db/src"],
+      "@eventflow/shared": ["packages/shared/src"]
+    },
+    "ignoreDeprecations": "6.0"
   }
 }
