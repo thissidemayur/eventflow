@@ -1,5 +1,5 @@
 {
-  "name": "eventflow/api*",
+  "name": "@eventflow/api",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -8,9 +8,11 @@
     "dev": "ts-node-dev --respawn ./src/index.ts"
   },
   "keywords": [],
-  "author": "",
+  "author": "Mayur Pal",
   "license": "ISC",
   "dependencies": {
+  "@eventflow/shared": "*",
+  "@eventflow/db": "*",
     "express": "^5.2.1",
     "zod": "^4.3.6"
   },

@@ -6,8 +6,9 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:api": "npm run dev -w eventflow/api*",
-    "dev:worker": "npm run dev -w eventflow/worker* "
+    "dev:api": "npm run dev -w @eventflow/api",
+    "dev:worker": "npm run dev -w @eventflow/worker ",
+    "build": "npm run build -w @eventflow/shared && npm run build -w @eventflow/db"
   },
   "packageManager": "npm@10.9.4"
 }
