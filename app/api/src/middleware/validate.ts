@@ -14,5 +14,5 @@ export function validateEvent(req:Request,res:Response,next:NextFunction) {
     }
 
     req.validatedEvent = result.data
-    next()
+    return next()
 }
