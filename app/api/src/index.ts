@@ -1,11 +1,12 @@
-import express,{Request,Response} from "express"
+import express,{Response} from "express"
 import "dotenv/config";
+import { eventRouter } from "./routes/events.route";
 
 const app = express()
 app.use(express.json())
 
-
-app.get("/health",(req:Request,res:Response)=>{
+app.use("/api/v1",eventRouter)
+app.get("/health",(_,res:Response)=>{
    res.json({
     status:"ok",
     timestamp: new Date().toISOString()
