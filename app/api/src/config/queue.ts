@@ -1,6 +1,15 @@
 import { EventJob, QUEUE_NAME } from "@eventflow/shared";
 import { Redis } from "ioredis";
 import { Queue } from "bullmq";
+import path from "node:path"
+import dotenv from "dotenv"
+
+
+dotenv.config({
+  path: path.resolve(process.cwd(), "../../.env"),
+});
+
+
 export const connection = new Redis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null, // required by bullmq
 });
