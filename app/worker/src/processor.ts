@@ -9,10 +9,11 @@ export async function processEvent(job: Job<EventJob>) {
     const startTime = Date.now()
     const data = job.data
 
+    const idempotencykey = data.idempotencyKey ?? `job-${job.id}`
     // write to DB as processing
     const event = await prisma.event.upsert({
       where: {
-        idempotencyKey: data.idempotencyKey ?? `job-${job.id}`,
+        idempotencyKey:idempotencykey,
       },
       create: {
         jobId: job.id!,
@@ -27,7 +28,7 @@ export async function processEvent(job: Job<EventJob>) {
         createdAt: new Date(),
       },
       update: {
-        status: "pending",
+        status: "processing",
         attemptCount: job.attemptsMade,
         lastError: null,
       },
@@ -38,7 +39,7 @@ export async function processEvent(job: Job<EventJob>) {
         eventType: data.eventType,
         tenantId:data.tenantId,
         payload: data.payload
-    })
+    },idempotencykey!)
 
     // mark as completed with timing
     const durationMs = Date.now() - startTime
@@ -50,8 +51,6 @@ export async function processEvent(job: Job<EventJob>) {
             processingDurationMs: durationMs
         }
     })
+    console.log(`[Job ${job.id}] completed in ${durationMs}ms`);
 
-
-
-    
 }
