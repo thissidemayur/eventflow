@@ -48,3 +48,13 @@ model Event {
   @@map("events")
 
 }
+
+
+model NotificationLog {
+  id String @id @default(uuid())
+  idempotencyKey String @unique @map("idempotency_key")
+  channel String // discord | email
+  sentAt DateTime @default(now()) @map("sent_at")
+
+  @@map("notification_log")
+}
