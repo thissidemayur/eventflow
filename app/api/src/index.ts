@@ -3,6 +3,7 @@ import "dotenv/config";
 import { eventRouter } from "./routes/events.route";
 import { createLogger } from "@eventflow/shared";
 import { metricRouter } from "./routes/metrics.route";
+import { healthRouter } from "./routes/health.route";
 
 
 const app = express()
@@ -28,14 +29,12 @@ app.use((req:Request,res:Response,next:NextFunction)=>{
 
 app.use(express.json())
 app.set("trust proxy",false) // no proxy use
+
+// routes 
 app.use("/api/v1",eventRouter)
 app.use("/api/v1", metricRouter);
-app.get("/health",(_,res:Response)=>{
-   res.json({
-    status:"ok",
-    timestamp: new Date().toISOString()
-  })
-})
+app.use("/api/v1", healthRouter);
+
 
 const PORT = process.env.PORT ?? 3000
 
