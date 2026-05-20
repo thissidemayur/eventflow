@@ -1,7 +1,7 @@
 import { EventJob, createLogger } from "@eventflow/shared";
 import { Job } from "bullmq";
 import { prisma } from "@eventflow/db";
-import { sendNotification } from "./notifications";
+import { sendNotification } from "./notifications.js";
 import { Prisma } from "@prisma/client";
 
 const logger = createLogger("worker:processor")
