@@ -1,10 +1,8 @@
 import { Router, Response, Request } from "express";
-import { authMiddleware } from "../middleware/auth";
-import { validateEvent } from "../middleware/validate";
-import { eventQueue } from "../config/queue";
-import { ipRateLimit } from "../middleware/ipRateLimit";
-
-
+import { authMiddleware } from "../middleware/auth.js";
+import { validateEvent } from "../middleware/validate.js";
+import { eventQueue } from "../config/queue.js";
+import { ipRateLimit } from "../middleware/ipRateLimit.js";
 
 const router = Router()
 
