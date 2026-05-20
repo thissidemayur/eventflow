@@ -1,11 +1,11 @@
 import express, { NextFunction, Response, Request } from "express";
 import "dotenv/config";
-import { eventRouter } from "./routes/events.route";
-import { createLogger } from "@eventflow/shared";
-import { metricRouter } from "./routes/metrics.route";
-import { healthRouter } from "./routes/health.route";
+import { eventRouter } from "./routes/events.route.js";
+import { createLogger, loadEnv } from "@eventflow/shared";
+import { metricRouter } from "./routes/metrics.route.js";
+import { healthRouter } from "./routes/health.route.js";
 
-
+loadEnv()
 const app = express()
 
 const logger = createLogger("api")
