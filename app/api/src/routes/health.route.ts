@@ -1,13 +1,13 @@
 
 import { prisma } from "@eventflow/db";
 import { Router } from "express";
-import { redis } from "../config/redis";
+import { redis } from "../config/redis.js";
 
 
 
 const healthRouter = Router()
 
-healthRouter.get("/health",async(req,res)=>{
+healthRouter.get("/health",async(_,res)=>{
     const checks = {
         postgress:"unknowm",
         redis:"unknown"
@@ -35,4 +35,5 @@ healthRouter.get("/health",async(req,res)=>{
         timestamp:new Date().toISOString()
     })
 })
+
 export  {healthRouter}
