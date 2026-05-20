@@ -1,15 +1,14 @@
 import "dotenv/config";
-import Redis from "ioredis";
-import path from "node:path";
-import dotenv from "dotenv";
-import { Worker, QueueEvents, Queue } from "bullmq";
-import { EventJob, QUEUE_NAME } from "@eventflow/shared";
-import { processEvent } from "./processor";
-import { prisma } from "@eventflow/db";
 
-dotenv.config({
-  path: path.resolve(process.cwd(), "../../.env"),
-});
+import { Worker, QueueEvents, Queue } from "bullmq";
+import { EventJob, QUEUE_NAME, loadEnv } from "@eventflow/shared";
+import { processEvent } from "./processor.js";
+import { prisma } from "@eventflow/db";
+import RedisImport from "ioredis";
+
+loadEnv() 
+const Redis = RedisImport.default;
+
 
 const REDIS_URL = process.env.REDIS_URL;
 if (!REDIS_URL) {
