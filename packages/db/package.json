@@ -7,7 +7,8 @@
     "build": "tsc",
     "generate": "prisma generate",
     "dev": "prisma generate --watch",
-    "migrate": "dotenv -e ../../.env -- prisma migrate dev"
+    "migrate": "prisma migrate dev",
+    "seed": "ts-node src/seed.ts"
   },
   "devDependencies": {
     "@types/node": "20.11.0",
@@ -15,6 +16,7 @@
     "typescript": "5.4.5"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0"
   },
   "exports": {
