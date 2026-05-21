@@ -13,7 +13,7 @@ services:
     volumes:
       - "postgres_data:/var/lib/postgresql/data"
     healthcheck:
-      test: ["CMD-SHELL","pg_isready -U eventflow",]
+      test: ["CMD-SHELL", "pg_isready -U eventflow"]
       interval: 5s
       timeout: 5s
 
@@ -26,14 +26,66 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD","redis-cli","ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
   
+  migrate:
+    build:
+      context: .
+      dockerfile: app/api/Dockerfile
+    container_name: eventflow_migrate
+    command: sh -c "npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma"
+    environment:
+      DATABASE_URL: postgresql://eventflow:eventflow@postgres:5432/eventflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api: # Fixed typo from 'aoi' to 'api'
+    build:
+      context: .
+      dockerfile: app/api/Dockerfile
+    container_name: eventflow_api
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://eventflow:eventflow@postgres:5432/eventflow
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: "unless-stopped"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: .
+      dockerfile: app/api/Dockerfile
+    container_name: eventflow_worker
+    environment:
+      DATABASE_URL: postgresql://eventflow:eventflow@postgres:5432/eventflow
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: "unless-stopped"
+    deploy: # Fixed indentation
+      replicas: 1
+
 volumes:
   postgres_data:
   redis_data:
-
-  
-    
