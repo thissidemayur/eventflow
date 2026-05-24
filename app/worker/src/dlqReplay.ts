@@ -1,6 +1,6 @@
 import { QUEUE_NAME } from "@eventflow/shared";
 import { Queue } from "bullmq";
-import Redis from "ioredis";
+import {Redis} from "ioredis";
 
 const REDIS_URL = process.env.REDIS_URL!;
 

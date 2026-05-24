@@ -2,6 +2,7 @@
   "name": "@eventflow/worker",
   "version": "1.0.0",
   "main": "dist/index.js",
+  "type": "module",
   "scripts": {
     "dev": "dotenv -e ../../.env -- tsx watch src/index.ts",
     "build": "tsc"

@@ -1,8 +1,18 @@
 {
   "name": "@eventflow/db",
   "version": "1.0.0",
+  "type": "module",
+
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  
   "scripts": {
     "build": "tsc",
     "generate": "dotenv -e ../../.env -- prisma generate --config=../../prisma.config.ts",
@@ -12,17 +22,10 @@
   },
   "devDependencies": {
     "@types/node": "20.11.0",
-    "prisma": "^7.7.0",
     "typescript": "5.4.5"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.7.0",
-    "@prisma/client": "^7.7.0"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
+    "@prisma/adapter-pg": "7.8.0",
+    "@prisma/client": "7.8.0"
   }
 }

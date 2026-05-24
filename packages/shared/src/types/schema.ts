@@ -7,8 +7,8 @@ export const EventSchema = z.object({
     .refine((p) => JSON.stringify(p).length <= 65536, {
       message: "payload too large (max 64kb)",
     }),
-  idempotencyKey: z.uuid().optional(),
-  timestamp: z.iso.datetime().optional(),
+  idempotencyKey: z.string().uuid().optional(),
+  timestamp: z.string().datetime().optional(),
 });
 
 export type EventInput = z.infer<typeof EventSchema>
