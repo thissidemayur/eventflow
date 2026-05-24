@@ -1,4 +1,4 @@
-version: '3.9'
+# version: '3.9'
 
 services:
   postgres:
@@ -20,8 +20,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: eventflow_redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
@@ -35,19 +33,21 @@ services:
     build:
       context: .
       dockerfile: app/api/Dockerfile
-    container_name: eventflow_migrate
-    command: sh -c "npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma"
+      args:
+        DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+    command: sh -c "npx prisma migrate deploy "
     environment:
       DATABASE_URL: postgresql://eventflow:eventflow@postgres:5432/eventflow
     depends_on:
       postgres:
         condition: service_healthy
 
-  api: # Fixed typo from 'aoi' to 'api'
+  api: 
     build:
       context: .
       dockerfile: app/api/Dockerfile
-    container_name: eventflow_api
+      args:
+        DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
     ports:
       - "3000:3000"
     environment:
@@ -70,8 +70,9 @@ services:
   worker:
     build:
       context: .
-      dockerfile: app/api/Dockerfile
-    container_name: eventflow_worker
+      dockerfile: app/worker/Dockerfile
+      args:
+        DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
     environment:
       DATABASE_URL: postgresql://eventflow:eventflow@postgres:5432/eventflow
       REDIS_URL: redis://redis:6379
@@ -83,8 +84,7 @@ services:
       migrate:
         condition: service_completed_successfully
     restart: "unless-stopped"
-    deploy: # Fixed indentation
-      replicas: 1
+
 
 volumes:
   postgres_data:
