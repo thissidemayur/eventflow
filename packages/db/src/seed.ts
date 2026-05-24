@@ -1,4 +1,4 @@
-import { prisma } from "./client";
+import { prisma } from "./client.js";
 import { createHash, randomBytes } from "crypto";
 
 async function main() {
@@ -14,7 +14,11 @@ async function main() {
   });
 
   console.log("API Key created:");
-  console.log({ rawKey, keyHash, id: apiKey.id });
+  console.log({
+    rawKey,
+    keyHash,
+    id: apiKey.id,
+  });
 }
 
 main()
