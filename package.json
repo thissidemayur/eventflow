@@ -5,7 +5,6 @@
     "app/*",
     "packages/*"
   ],
-  
   "scripts": {
     "build": "tsc -b",
     "clean": "tsc -b --clean",
@@ -13,7 +12,11 @@
     "dev:worker": "npm run dev -w @eventflow/worker"
   },
   "devDependencies": {
-    "dotenv-cli": "7.4.2",
+    "dotenv-cli": "^7.4.4",
     "typescript": "5.4.5"
+  },
+  "dependencies": {
+    "@eventflow/db": "^1.0.0",
+    "ts-node": "^10.9.2"
   }
 }

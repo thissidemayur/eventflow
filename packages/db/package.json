@@ -5,10 +5,10 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "generate": "prisma generate",
-    "dev": "prisma generate --watch",
-    "migrate": "prisma migrate dev",
-    "seed": "ts-node src/seed.ts"
+    "generate": "dotenv -e ../../.env -- prisma generate --config=../../prisma.config.ts",
+    "dev": "dotenv -e ../../.env -- prisma generate --watch --config=../../prisma.config.ts",
+    "migrate": "dotenv -e ../../.env -- prisma migrate dev --config=../../prisma.config.ts",
+    "seed": "dotenv -e ../../.env -- tsx src/seed.ts"
   },
   "devDependencies": {
     "@types/node": "20.11.0",
