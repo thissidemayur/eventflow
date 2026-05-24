@@ -1,14 +1,8 @@
-import "dotenv/config";
-
 import { Worker, QueueEvents, Queue } from "bullmq";
-import { EventJob, QUEUE_NAME, loadEnv } from "@eventflow/shared";
+import { EventJob, QUEUE_NAME } from "@eventflow/shared";
 import { processEvent } from "./processor.js";
 import { prisma } from "@eventflow/db";
-import RedisImport from "ioredis";
-
-loadEnv() 
-const Redis = RedisImport.default;
-
+import Redis from "ioredis";
 
 const REDIS_URL = process.env.REDIS_URL;
 if (!REDIS_URL) {
@@ -21,7 +15,9 @@ const eventConnection = new Redis(REDIS_URL, { maxRetriesPerRequest: null });
 const dlqConnection = new Redis(REDIS_URL, { maxRetriesPerRequest: null });
 
 // DLQ is queue- all job land here after all retries exhausted
-const dlqQueue = new Queue(QUEUE_NAME, { connection: dlqConnection });
+const dlqQueue = new Queue("events-dlq", {
+  connection: dlqConnection,
+});
 
 const worker = new Worker<EventJob>(QUEUE_NAME, processEvent, {
   connection: workerConnection,
@@ -83,11 +79,21 @@ queueEvents.on("stalled", ({ jobId }) => {
 
 
 // gracefull shutdown
-process.on("SIGTERM",async()=>{
+process.on("SIGTERM", async () => {
   console.error("SIGTERM received — shutting down worker gracefully");
-  await worker.close()
-  await queueEvents.close()
-  await dlqQueue.close()
-  process.exit(0)
-})
+
+  await worker.close();
+  await queueEvents.close();
+  await dlqQueue.close();
+
+  await workerConnection.quit();
+  await eventConnection.quit();
+  await dlqConnection.quit();
+
+  await prisma.$disconnect();
+
+  process.exitCode = 0;
+});
+
+
 

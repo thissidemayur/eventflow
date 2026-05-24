@@ -1,16 +1,18 @@
 import { QUEUE_NAME } from "@eventflow/shared";
 import { Queue } from "bullmq";
-import RedisImport from "ioredis";
+import Redis from "ioredis";
 
-const Redis = RedisImport.default;
 const REDIS_URL = process.env.REDIS_URL!;
+
 const dlqQueueConnection = new Redis(REDIS_URL, { maxRetriesPerRequest: null });
 const eventQueueConnection = new Redis(REDIS_URL, {
   maxRetriesPerRequest: null,
 });
 
 const eventQueue = new Queue(QUEUE_NAME, { connection: eventQueueConnection });
-const dlqQueue = new Queue("events-dlq", { connection: dlqQueueConnection });
+const dlqQueue = new Queue("events-dlq", {
+  connection: dlqQueueConnection,
+});
 
 async function replayDLQ(batchSize = 10, delayBetweenMs = 2000) {
   let replayed = 0;
