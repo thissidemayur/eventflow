@@ -20,6 +20,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: eventflow_redis
+    ports:
+    - "6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
@@ -46,6 +48,7 @@ services:
     build:
       context: .
       dockerfile: app/api/Dockerfile
+      
       args:
         DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
     ports:
