@@ -150,9 +150,9 @@ This prints your raw API key — save it, it is shown only once:
 ```
 API Key created:
 {
-  rawKey: 'ef_live_e00a518a27817d6931ac9271957cf1d3f6c8a03fc1035b3e',
-  keyHash: '074a2b42979f7e9837e9caa2238cb8c7979c03c4e6a0e2f2a1e3615146232fd5',
-  id: 'a0ec281f-e700-40d5-b23d-e9b37af6c5b6'
+  rawKey: 'ef_live_5d89919e3878989b404cbe18fbbc230df53cb3c3e53c97b4',
+  keyHash: '7b140a2910ba81e39c5f477a36a93cc1032df1d7ef706a73b4fc6c18989e2442',
+  id: '5134dd52-ed3d-4de5-8e7f-20b4475d0a17'
 }
 ```
 
