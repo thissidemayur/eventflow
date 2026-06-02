@@ -9,31 +9,31 @@ const healthRouter = Router()
 
 healthRouter.get("/health",async(_,res)=>{
     const checks = {
-        postgress:"unknowm",
-        redis:"unknown"
-    }
+      postgres: "unknown",
+      redis: "unknown",
+    };
 
     try {
         await prisma.$queryRaw`SELECT 1`;
-        checks.postgress = "healthy"
+        checks.postgres = "healthy"
     } catch {
-        checks.postgress = "unhealthy"
+        checks.postgres = "unhealthy"
     }
 
     try {
        await redis.ping()
        checks.redis = "healthy" 
     } catch  {
-        checks.postgress = "unhealthy"
+        checks.redis = "unhealthy"
     }
 
     const allHealthy = Object.values(checks).every(v=>v === "healthy")
 
     return res.status(allHealthy ? 200 : 503).json({
-        status:allHealthy ? "ok": "degrade",
-        checks,
-        timestamp:new Date().toISOString()
-    })
+      status: allHealthy ? "ok" : "degraded",
+      checks,
+      timestamp: new Date().toISOString(),
+    });
 })
 
 export  {healthRouter}
