@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "dotenv -e ../../.env -- tsx watch src/index.ts",
-    "build": "tsc"
-  },
+    "build": "tsc -b"
+  },    
   "dependencies": {
     "@eventflow/db": "*",
     "@eventflow/shared": "*",

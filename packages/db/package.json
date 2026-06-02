@@ -14,7 +14,7 @@
   },
   
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -b",
     "generate": "dotenv -e ../../.env -- prisma generate --config=../../prisma.config.ts",
     "dev": "dotenv -e ../../.env -- prisma generate --watch --config=../../prisma.config.ts",
     "migrate": "dotenv -e ../../.env -- prisma migrate dev --config=../../prisma.config.ts",
