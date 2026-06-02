@@ -4,29 +4,17 @@ import { redis } from "../config/redis.js";
 
 const logger = createLogger("api:apiKeyRateLimit");
 
-function getClientIp(req: Request): string {
-  return (
-    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-    req.ip ||
-    req.socket.remoteAddress ||
-    "unknown"
-  );
-}
-
-function normalizeIp(ip: string): string {
-  if (ip.startsWith("::ffff:")) {
-    return ip.replace("::ffff:", "");
-  }
-  return ip;
-}
-
 export async function apiKeyRateLimit(
   req: Request,
   res: Response,
   next: NextFunction,
 ) {
-  const ip = normalizeIp(getClientIp(req));
-  const key = `apikeyRateLimit:ip:${ip}`;
+  const apiKeyId = req.apiKeyId;
+  if (!apiKeyId) {
+    logger.error({}, "apiKeyId not found on request (auth middleware may not have run)");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const key = `ratelimit:apikey:${apiKeyId}`;
 
   const WINDOW = 60;
   const LIMIT = 100;
