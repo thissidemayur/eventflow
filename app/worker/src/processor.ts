@@ -44,7 +44,7 @@ export async function processEvent(job: Job<EventJob>) {
           eventType: data.eventType,
           tenantId:data.tenantId,
           payload: data.payload
-      },idempotencykey!)
+      },idempotencykey)
   
       // mark as completed with timing
       const durationMs = Date.now() - startTime
@@ -56,13 +56,13 @@ export async function processEvent(job: Job<EventJob>) {
               processingDurationMs: durationMs
           }
       })
-          log.info({ durationMs }, "job completed");
+      log.info({ durationMs }, "job completed");
   
     } catch (error:any) {
       log.error({
         error:error.message,
         attemptsMade:job.attemptsMade,
-        stack:error.statck ?? undefined,
+        stack:error.stack ?? undefined,
       },"job failed")
       throw error
     }

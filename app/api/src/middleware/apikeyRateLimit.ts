@@ -11,7 +11,6 @@ export async function apiKeyRateLimit(
 ) {
   const apiKeyId = req.apiKeyId;
   if (!apiKeyId) {
-    logger.error({}, "apiKeyId not found on request (auth middleware may not have run)");
     return res.status(401).json({ error: "Unauthorized" });
   }
   const key = `ratelimit:apikey:${apiKeyId}`;
@@ -39,8 +38,8 @@ export async function apiKeyRateLimit(
     res.setHeader("X-RateLimit-Reset", resetAt);
 
     if (count > LIMIT) {
-      metrics.increment("ratelimit.apikey.rejected");
-      metrics.increment(`ratelimit.apikey.rejected.${req.tenantId}`);
+      // metrics.increment("ratelimit.apikey.rejected");
+      // metrics.increment(`ratelimit.apikey.rejected.${req.tenantId}`);
       logger.warn(
         {
           apiKeyId: req.apiKeyId,
@@ -58,14 +57,14 @@ export async function apiKeyRateLimit(
       });
     }
 
-    metrics.increment("ratelimit.apikey.allowed");
+    // metrics.increment("ratelimit.apikey.allowed");
     return next();
   } catch (err: any) {
     logger.error(
       { error: err.message, apiKeyId: req.apiKeyId },
       "api key rate limit error",
     );
-    metrics.increment("ratelimit.apikey.error");
+    // metrics.increment("ratelimit.apikey.error");
     return res.status(503).json({ error: "Rate limiter unavailable" });
   }
 }

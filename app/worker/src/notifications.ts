@@ -1,4 +1,5 @@
 import { prisma } from "@eventflow/db";
+import { createLogger } from "@eventflow/shared";
 import { Prisma } from "@prisma/client";
 
 interface NotificationPayload {
@@ -7,6 +8,8 @@ interface NotificationPayload {
   payload: Prisma.InputJsonValue;
 }
 
+const logger = createLogger("worker:notification")
+
 // send Discord message
 async function sendDiscordNotification(
   data: NotificationPayload,
@@ -14,7 +17,7 @@ async function sendDiscordNotification(
 ): Promise<void> {
   const webhookURL = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookURL) {
-    console.warn("DISCORD_WEBHOOK_URL missing — skipping discord notification");
+    logger.warn("DISCORD_WEBHOOK_URL missing- skipping discord notification")
     return;
   }
 
@@ -43,6 +46,7 @@ async function sendDiscordNotification(
   });
 
   if (!response.ok) {
+
     throw new Error(`Discord webhook failed: ${response.status}`);
   }
 }
@@ -56,7 +60,7 @@ async function sendEmailNotification(
   const toEmail = process.env.NOTIFICATION_EMAIL;
 
   if (!apiKey || !toEmail) {
-    console.warn(
+    logger.warn(
       "RESEND_API_KEY or NOTIFICATION_EMAIL missing — skipping email",
     );
     return;
@@ -126,9 +130,7 @@ export async function sendNotification(
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      console.log(
-        `[Notification ${discordKey}] already recorded — skipping discord`,
-      );
+      logger.info({key:discordKey}," notification already sent- skipping discord notification")
       // do not return — email may still need to send
     } else {
       throw error;
@@ -146,9 +148,10 @@ export async function sendNotification(
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      console.log(
-        `[Notification ${emailKey}] already recorded — skipping email`,
-      );
+          logger.info(
+            { key: emailKey },
+            " notification already sent- skipping email notification",
+          );
       // both already sent, nothing to do
       return;
     }

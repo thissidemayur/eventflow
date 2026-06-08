@@ -1,7 +1,8 @@
-import { QUEUE_NAME } from "@eventflow/shared";
+import { QUEUE_NAME, createLogger } from "@eventflow/shared";
 import { Queue } from "bullmq";
 import {Redis} from "ioredis";
 
+const logger = createLogger("worker:dlqReplay")
 const REDIS_URL = process.env.REDIS_URL!;
 
 const dlqQueueConnection = new Redis(REDIS_URL, { maxRetriesPerRequest: null });
@@ -19,7 +20,7 @@ async function replayDLQ(batchSize = 10, delayBetweenMs = 2000) {
   while (true) {
     const jobs = await dlqQueue.getJobs(["waiting"], 0, batchSize - 1);
     if (jobs.length === 0) {
-      console.log(`DLQ replay complete. Total replayed: ${replayed}`);
+      logger.info({ totalReplayed: replayed },"DLQ replay completed");
       break;
     }
 
@@ -29,9 +30,11 @@ async function replayDLQ(batchSize = 10, delayBetweenMs = 2000) {
       });
       await job.remove();
       replayed++;
-      console.log(`Replayed job ${replayed}: ${job.id}`);
+      logger.info({
+        replayed,originalJob:job.id
+      },"jo replayed")
     }
-    console.log(`Batch done. Waiting ${delayBetweenMs}ms before next batch...`);
+    logger.info({ batchCompletedInMS: delayBetweenMs },"DLQ Batch completed");
     await new Promise((r) => setTimeout(r, delayBetweenMs));
   }
 }

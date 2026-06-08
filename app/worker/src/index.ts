@@ -1,9 +1,10 @@
 import { Worker, QueueEvents, Queue } from "bullmq";
-import { EventJob, QUEUE_NAME } from "@eventflow/shared";
+import { EventJob, QUEUE_NAME, createLogger } from "@eventflow/shared";
 import { processEvent } from "./processor.js";
 import { prisma } from "@eventflow/db";
 import Redis from "ioredis";
 
+ const logger = createLogger("worker:index")
 const REDIS_URL = process.env.REDIS_URL;
 if (!REDIS_URL) {
   throw new Error("undefined REDIS_URL in env");
@@ -23,6 +24,7 @@ const worker = new Worker<EventJob>(QUEUE_NAME, processEvent, {
   connection: workerConnection,
   concurrency: 5, //process 5 job simulatenouslu
 });
+logger.info({  concurrency: 5,queue:QUEUE_NAME },"worker started");
 
 // queueEvent- it uses SUBSCRIBE internally
 const queueEvents = new QueueEvents(QUEUE_NAME, {
@@ -31,17 +33,18 @@ const queueEvents = new QueueEvents(QUEUE_NAME, {
 
 // completed job
 worker.on("completed", (job) => {
-  console.log(`Job: ${job.id} completed!`);
 });
 
 // failed job
 worker.on("failed", async (job, err) => {
-  console.error(
-    `[Job ${job?.id} failed after ${job?.attemptsMade} attempts]: `,
-    err.message,
-  );
+    if (!job) return;
 
-  if (!job) return;
+ logger.error({
+  jobId:job?.id,
+  attemptsMade:job?.attemptsMade,
+  error:err.message,
+ },"job permanently failed")
+
 
   prisma.event
     .update({
@@ -51,27 +54,34 @@ worker.on("failed", async (job, err) => {
         lastError: err.message,
       },
     })
-    .catch(console.error);
+    .catch((err:any)=> logger.error({jobId:job.id,error:err.message},"failed to update event status"));
 
   // only move to dlq after all reteries exhausted
   const maxAttempts = job.opts.attempts ?? 1;
   if (job.attemptsMade >= maxAttempts) {
-    console.error(`[Job ${job.id}] moving to DLQ`);
-     dlqQueue.add("dead-letter", {
-      originalJob: job.data,
-      failedReason: err.message,
-      failedAt: new Date().toISOString(),
-      attemptMade: job.attemptsMade,
-    }).catch(console.error)
+ logger.warn({
+  jobId:job?.id,
+ },"job moving to DLQ")   
+   await dlqQueue
+     .add("dead-letter", {
+       originalJob: job.data,
+       failedReason: err.message,
+       failedAt: new Date().toISOString(),
+       attemptMade: job.attemptsMade,
+     })
+     .catch((err: any) =>
+       logger.error(
+         { jobId: job.id, error: err.message },
+         "failed to sent job at DLQ",
+       ),
+     );
   }
 });
 
 // stalled job:
-
 queueEvents.on("stalled", ({ jobId }) => {
-  console.error(
-    `[Job ${jobId} stalled- worker likely crashed mid-processing ]`,
-  );
+  logger.warn({jobId},"job stalled- worker likly crashed mid-processing")
+
   // bullmq automatically re-queue stalled jobs
   // this event isjust for observability
 });
@@ -80,7 +90,7 @@ queueEvents.on("stalled", ({ jobId }) => {
 
 // gracefull shutdown
 process.on("SIGTERM", async () => {
-  console.error("SIGTERM received — shutting down worker gracefully");
+  logger.info("SIGTERM received — shutting down worker gracefully");
 
   await worker.close();
   await queueEvents.close();
@@ -93,7 +103,5 @@ process.on("SIGTERM", async () => {
   await prisma.$disconnect();
 
   process.exitCode = 0;
+  logger.info("worker and prisma shutdown complete")
 });
-
-
-

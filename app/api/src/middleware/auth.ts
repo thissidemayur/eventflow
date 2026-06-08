@@ -11,8 +11,9 @@ export async function authMiddleware(
 ) {
 
   const apiKey = req.headers["x-api-key"] as string | undefined;
+
   if (!apiKey) {
-    metrics.increment("auth.missing_key")
+    // metrics.increment("auth.missing_key")
     return res.status(401).json({ error: "Missing API key" });
   }
 
@@ -24,15 +25,17 @@ export async function authMiddleware(
    });
  
    if (!keyRecord || !keyRecord.active) {
+    logger.warn({keyHashPrefix:hashed.slice(0,8)} ,"Invalid API key")
      return res.status(401).json({ error: "Invalid API key" });
    }
  
    req.apiKeyId = keyRecord.id
    req.tenantId = keyRecord.tenantId
+  //  metrics.increment("auth.success")
    return next();
  } catch (error) {
-    logger.error({error:(error as Error).message},"auth error")
-    metrics.increment("auth.error")
+    logger.error({error:(error as Error).message},"auth DB lookup failed")
+    // metrics.increment("auth.error")
     return res.status(500).json({ error: "Internal server error" });
  }
 }

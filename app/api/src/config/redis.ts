@@ -10,13 +10,14 @@ function createRedisConnection(name:string, options:object = {}) {
     ...options
   })
 
-  client.on("connect",()=>logger.info({connecttion:name},"redis connected"))
+  client.on("connect",()=>logger.info({connection:name},"redis connected"))
   client.on("error", (err) =>
     logger.error({ connection: name, error: err.message }, "redis error"),
   );
   client.on("connecting", () =>
     logger.warn({ connection: name }, "redis reconnecting"),
   );
+  client.on("reconnecting",()=>logger.debug({connection:name},"redis reconnecting"))
 
   return client;
 }

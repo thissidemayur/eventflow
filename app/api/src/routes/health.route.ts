@@ -2,10 +2,12 @@
 import { prisma } from "@eventflow/db";
 import { Router } from "express";
 import { redis } from "../config/redis.js";
+import { createLogger } from "@eventflow/shared";
 
 
 
 const healthRouter = Router()
+const logger = createLogger("api:health");
 
 healthRouter.get("/health",async(_,res)=>{
     const checks = {
@@ -16,15 +18,22 @@ healthRouter.get("/health",async(_,res)=>{
     try {
         await prisma.$queryRaw`SELECT 1`;
         checks.postgres = "healthy"
-    } catch {
+    } catch(error:any) {
         checks.postgres = "unhealthy"
+        logger.error({error:error?.message},"postgress health check failed")
     }
 
     try {
        await redis.ping()
-       checks.redis = "healthy" 
-    } catch  {
+       checks.redis = "healthy"
+ 
+    } catch (error: any) {
         checks.redis = "unhealthy"
+        logger.error(
+                  { error:error.message },
+                  "redis health check failed",
+        );
+
     }
 
     const allHealthy = Object.values(checks).every(v=>v === "healthy")
