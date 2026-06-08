@@ -16,6 +16,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U eventflow"]
       interval: 5s
       timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -39,7 +40,7 @@ services:
         DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
     command: sh -c "npx prisma migrate deploy "
     environment:
-      DATABASE_URL: postgresql://eventflow:eventflow@postgres:5432/eventflow
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,8 +55,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://eventflow:eventflow@postgres:5432/eventflow
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,7 +68,7 @@ services:
         condition: service_completed_successfully
     restart: "unless-stopped"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/v1/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-3000}/api/v1/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -77,8 +80,13 @@ services:
       args:
         DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
     environment:
-      DATABASE_URL: postgresql://eventflow:eventflow@postgres:5432/eventflow
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      NOTIFICATION_EMAIL: ${NOTIFICATION_EMAIL}
     depends_on:
       postgres:
         condition: service_healthy
