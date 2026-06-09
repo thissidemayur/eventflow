@@ -3,6 +3,7 @@ import { EventJob, QUEUE_NAME, createLogger, metrics } from "@eventflow/shared";
 import { processEvent } from "./processor.js";
 import { prisma } from "@eventflow/db";
 import Redis from "ioredis";
+import { startMetricServer } from "./metricsServer.js";
 
 const logger = createLogger("worker:index");
 const REDIS_URL = process.env.REDIS_URL;
@@ -99,10 +100,16 @@ queueEvents.on("stalled", ({ jobId }) => {
   // this event isjust for observability
 });
 
+// start metric server so promitheous can scrape worker metrics
+const metricsServer = startMetricServer(9091)
+
+
 // gracefull shutdown
 process.on("SIGTERM", async () => {
   logger.info("SIGTERM received — shutting down worker gracefully");
   metrics.increment("worker.SIGTERM_recieved");
+  
+  metricsServer.close();
   await worker.close();
   await queueEvents.close();
   await dlqQueue.close();
