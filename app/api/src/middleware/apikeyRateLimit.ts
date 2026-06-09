@@ -38,9 +38,9 @@ export async function apiKeyRateLimit(
     res.setHeader("X-RateLimit-Reset", resetAt);
 
     if (count > LIMIT) {
-      // metrics.increment("ratelimit.apikey.rejected");
-      // metrics.increment(`ratelimit.apikey.rejected.${req.tenantId}`);
-      logger.warn(
+      metrics.increment("ratelimit.apikey.rejected");
+      metrics.increment(`ratelimit.apikey.rejected.${req.tenantId}`);
+      logger.warn (
         {
           apiKeyId: req.apiKeyId,
           tenantId: req.tenantId,
@@ -49,6 +49,7 @@ export async function apiKeyRateLimit(
         },
         "api key rate limit exceeded",
       );
+      
       res.setHeader("Retry-After", WINDOW);
       return res.status(429).json({
         error: "Rate limit exceeded",
@@ -57,14 +58,16 @@ export async function apiKeyRateLimit(
       });
     }
 
-    // metrics.increment("ratelimit.apikey.allowed");
+    metrics.increment("ratelimit.apikey.allowed");
     return next();
+
   } catch (err: any) {
     logger.error(
       { error: err.message, apiKeyId: req.apiKeyId },
-      "api key rate limit error",
+      "job failed",
     );
-    // metrics.increment("ratelimit.apikey.error");
+    metrics.increment("ratelimit.apikey.failed");
     return res.status(503).json({ error: "Rate limiter unavailable" });
   }
+   
 }

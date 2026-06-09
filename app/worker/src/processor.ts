@@ -1,4 +1,4 @@
-import { EventJob, createLogger } from "@eventflow/shared";
+import { EventJob, createLogger, metrics } from "@eventflow/shared";
 import { Job } from "bullmq";
 import { prisma } from "@eventflow/db";
 import { sendNotification } from "./notifications.js";
@@ -10,7 +10,7 @@ export async function processEvent(job: Job<EventJob>) {
     const startTime = Date.now()
     const log = logger.child({jobId:job.id,tenantId:job.data.tenantId})
     log.info({eventType:job.data.eventType},"job started")
-    
+    metrics.increment("jobs.started")
     const data = job.data
 
     try {
@@ -45,7 +45,7 @@ export async function processEvent(job: Job<EventJob>) {
           tenantId:data.tenantId,
           payload: data.payload
       },idempotencykey)
-  
+
       // mark as completed with timing
       const durationMs = Date.now() - startTime
       await prisma.event.update({
@@ -57,13 +57,17 @@ export async function processEvent(job: Job<EventJob>) {
           }
       })
       log.info({ durationMs }, "job completed");
-  
+      metrics.increment("jobs.completed")
+      metrics.gauge("jobs.duration_ms",durationMs)
+
     } catch (error:any) {
       log.error({
         error:error.message,
         attemptsMade:job.attemptsMade,
         stack:error.stack ?? undefined,
       },"job failed")
+      metrics.increment("jobs.failed")
+      
       throw error
     }
 

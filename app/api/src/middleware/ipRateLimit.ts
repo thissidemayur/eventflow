@@ -35,15 +35,15 @@ export async function ipRateLimit(req: Request, res: Response, next: NextFunctio
         res.setHeader("X-RateLimit-Remaining-IP", Math.max(0, MAX_REQUESTS_PER_IP - count))
 
         if (count > MAX_REQUESTS_PER_IP) {
-            // metrics.increment("ratelimit.ip.rejected")
             logger.warn({ip,count},"ip rate limit exceed");
+            metrics.increment("ratelimit.ip.rejected")
             return res.status(429).json({ error: "Too many requests" })
         }
-        // metrics.increment("ratelimit.ip.allowed")
+        metrics.increment("ratelimit.ip.allowed")
         return next()
     } catch (err: any) {
         logger.error({error:err.message},"ip rate limit redis error- failing open")
-        // metrics.increment("ratelimit.ip.error")
+        metrics.increment("ratelimit.ip.failed")
         return next()
     }
 }

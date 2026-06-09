@@ -1,11 +1,11 @@
 import { Router, Response, Request } from "express";
 import { authMiddleware } from "../middleware/auth.js";
 import { validateEvent } from "../middleware/validate.js";
-import { eventQueue } from "../config/queue.js";
+import  {eventQueue}  from "../config/queue.js";
 import { apiKeyRateLimit } from "../middleware/apikeyRateLimit.js";
 import { prisma } from "@eventflow/db";
 import { ipRateLimit } from "../middleware/ipRateLimit.js";
-import { createLogger } from "@eventflow/shared";
+import { createLogger, metrics } from "@eventflow/shared";
 
 const router = Router();
 const logger = createLogger("api:events");
@@ -127,6 +127,7 @@ router.post(
             tenantId
           },"idempotent request- returning existing job")
 
+          metrics.increment("events.duplicate")
           return res.status(202).json({
             accepted: false,
             jobId: existingEvent.jobId,
@@ -144,6 +145,7 @@ router.post(
         apikeyId: req.apiKeyId!,
         receivedAt: receivedAtIso,
       });
+      metrics.increment("events.accepted")
 
 
       return res
@@ -174,6 +176,7 @@ router.post(
       }
 
       logger.error({error: error.message,tenantId}, "failed to enqueue event");
+      metrics.increment("events.enqueue_error")
       throw error;
     }
   },

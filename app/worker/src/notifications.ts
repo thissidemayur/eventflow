@@ -1,5 +1,5 @@
 import { prisma } from "@eventflow/db";
-import { createLogger } from "@eventflow/shared";
+import { createLogger, metrics } from "@eventflow/shared";
 import { Prisma } from "@prisma/client";
 
 interface NotificationPayload {
@@ -46,9 +46,10 @@ async function sendDiscordNotification(
   });
 
   if (!response.ok) {
-
+    metrics.increment("notifications.discord.failed")
     throw new Error(`Discord webhook failed: ${response.status}`);
   }
+  metrics.increment("notifications.discord.sent");
 }
 
 // send email
@@ -63,7 +64,7 @@ async function sendEmailNotification(
     logger.warn(
       "RESEND_API_KEY or NOTIFICATION_EMAIL missing — skipping email",
     );
-    return;
+        return;
   }
 
   const payloadPreview = JSON.stringify(data.payload, null, 2).slice(0, 2000);
@@ -109,8 +110,10 @@ async function sendEmailNotification(
 
   if (!response.ok) {
     const body = await response.text();
+    metrics.increment("notifications.email.failed");
     throw new Error(`Resend email failed: ${response.status} — ${body}`);
   }
+  metrics.increment("notifications.email.sent");
 }
 
 // ─── Main exported function ──────────────────────────────────────────────────
@@ -131,7 +134,9 @@ export async function sendNotification(
       error.code === "P2002"
     ) {
       logger.info({key:discordKey}," notification already sent- skipping discord notification")
+      metrics.increment("notifications.skipped");
       // do not return — email may still need to send
+
     } else {
       throw error;
     }
@@ -152,6 +157,8 @@ export async function sendNotification(
             { key: emailKey },
             " notification already sent- skipping email notification",
           );
+        metrics.increment("notifications.skipped");
+
       // both already sent, nothing to do
       return;
     }
