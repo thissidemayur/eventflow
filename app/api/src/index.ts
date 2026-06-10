@@ -22,14 +22,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       },
       "request completed",
     );
+
+    const normalizedPath = req.path
+      .replace(/\/[0-9]+/g, "/:id") // /events/317 → /events/:id
+      .replace(/\/[a-f0-9-]{36}/g, "/:uuid"); // UUIDs → :uuid
+
+    metrics.trackRequest(req.method, normalizedPath, res.statusCode);
+    next();
   });
 
-  const normalizedPath = req.path
-    .replace(/\/[0-9]+/g, "/:id") // /events/317 → /events/:id
-    .replace(/\/[a-f0-9-]{36}/g, "/:uuid"); // UUIDs → :uuid
-
-  metrics.trackRequest(req.method, normalizedPath, res.statusCode);
-  next();
+  
 });
 
 app.use(express.json());
