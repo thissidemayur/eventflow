@@ -54,8 +54,7 @@ const counterDefinitions: Record<string, string> = {
   postgres_down_total: "Total times postgres health check failed",
   redis_down_total: "Total times redis health check failed",
 
-  // HTTP requests — labelled by method, path, status
-  http_requests_total: "Total HTTP requests",
+
 };
 
 const counters = new Map<string,Counter>();
@@ -79,7 +78,7 @@ function ensureGauge(name:string,help:string):Gauge{
 const httpRequestController = new Counter({
     name: "eventflow_http_requests_total",
     help:"Total HTTP requests by method,path and status",
-    labelNames:["methods","path","status"],
+    labelNames:["method","path","status"],
     registers:[registry]
 })
 
