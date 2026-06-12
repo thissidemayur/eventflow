@@ -11,6 +11,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   // tell every rqst.
   res.on("finish", () => {
+    const normalizedPath = req.path
+      .replace(/\/[0-9]+/g, "/:id") // /events/317 → /events/:id
+      .replace(/\/[a-f0-9-]{36}/g, "/:uuid"); // UUIDs → :uuid
+
+    metrics.trackRequest(req.method, normalizedPath, res.statusCode);
+    
     logger.info(
       {
         method: req.method,
@@ -23,13 +29,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       "request completed",
     );
 
-    const normalizedPath = req.path
-      .replace(/\/[0-9]+/g, "/:id") // /events/317 → /events/:id
-      .replace(/\/[a-f0-9-]{36}/g, "/:uuid"); // UUIDs → :uuid
-
-    metrics.trackRequest(req.method, normalizedPath, res.statusCode);
-    next();
+    
   });
+  next();
 
   
 });
