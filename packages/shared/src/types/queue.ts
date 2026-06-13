@@ -9,4 +9,5 @@ export interface EventJob {
   apikeyId: string;
   idempotencyKey?: string;
   receivedAt: string;
+  correlationId: string;
 }
