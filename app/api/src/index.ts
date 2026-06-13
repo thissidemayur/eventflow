@@ -3,9 +3,12 @@ import { eventRouter } from "./routes/events.route.js";
 import { createLogger, metrics } from "@eventflow/shared";
 import { metricRouter } from "./routes/metrics.route.js";
 import { healthRouter } from "./routes/health.route.js";
+import { correlationIdMiddleware } from "./middleware/correlationId.js";
 
 const app = express();
 const logger = createLogger("api:index");
+
+app.use(correlationIdMiddleware)
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
@@ -25,6 +28,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
         duration: Date.now() - start,
         apiKeyId: req.apiKeyId ?? null,
         tenantId: req.tenantId ?? null,
+        correlationId: req.correlationId
       },
       "request completed",
     );
