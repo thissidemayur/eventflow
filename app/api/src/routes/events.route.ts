@@ -144,6 +144,7 @@ router.post(
         idempotencyKey: idempotencyKey,
         apikeyId: req.apiKeyId!,
         receivedAt: receivedAtIso,
+        correlationId:req.correlationId!
       });
       metrics.increment("events.accepted")
 
