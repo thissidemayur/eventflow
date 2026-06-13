@@ -1,0 +1,182 @@
+name: CI/CD
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+        
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+            node-version: "22.22.2"
+            architecture: "x86_64"
+            cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+  
+        # Build and typecheck the TS file
+      - name: Build shared 
+        run: |
+             npm run build -w @eventflow/shared
+
+      - name: Build db
+        run: |
+             npm run build -w @eventflow/db
+
+      - name: Build api
+        run: |
+             npm run build -w @eventflow/api
+
+      - name: Build worker
+        run: | 
+            npm run build -w @eventflow/worker
+
+
+    # Docker build- check dockerfiles are working fine
+      - name: Build API Docker image
+        run: docker build -t eventflow-api:ci ./app/api
+      - name: Build Worker Docker image
+        run: docker build -t eventflow-worker:ci ./app/worker
+
+
+    # CI: Smoke test
+      - name: Create .env for smoke test
+        run: cp .env.example .env
+      
+      - name: Start postgres and redis
+        run: docker compose up -d postgres redis
+
+      - name: Wait for postgres and redis
+        run: sleep 10
+
+      - name: RUN DB migrations
+        run:  docker compose run --rm migrate
+
+      - name: Start API and WORKER
+        run: docker compose up -d api worker
+
+      - name: Wait for API to be ready
+        run: sleep 10
+
+      - name: Health check
+        run: curl --fail http://localhost:3000/api/v1/health
+
+      - name: Tear down
+        run: docker compose down -v
+
+
+
+
+    #  CD: Push image to docker hub (continous delivery) 
+        #  only for push to main , not on pull request
+        #  push 2 tags: latest and exact git commit SHA
+        # SHA tag is imp. - let rollback to exact version
+
+      - name: Login to Docker Hub
+        if: github.ref == "refs/heads/main" && github.event_name == "push"
+        uses: docker/login-action@v4 
+        with: 
+            username: ${{secrets.DOCKERHUB_USERNAME}}
+            password: ${{secrets.DOCKERHUB_TOKEN}}
+
+      - name: Push API image
+        if: github.ref == "refs/heads/main" && github.event_name == "push"
+        run: |
+            docker build \
+            -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-api:latest \
+            -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-api:${{github.sha}} \
+            ./app/api
+            docker push ${{secrets.DOCKERHUB_USERNAME}}/eventflow-api:latest
+            docker push ${{secrets.DOCKERHUB_USERNAME}}/eventflow-api:${{github.sha}}
+
+      - name: Push Worker image
+        if: github.ref == "refs/heads/main" && github.event_name == "push"
+        run: |
+            docker build \
+            -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-worker:latest \
+            -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-worker:${{github.sha}} \
+            ./app/api
+
+            docker push ${{secrets.DOCKERHUB_USERNAME}}/eventflow-worker:latest 
+            docker push ${{secrets.DOCKERHUB_USERNAME}}/eventflow-worker:${{github.sha}} \
+
+
+
+    #  CD: Deploy to EC2 (continous deployment) 
+        #  only run on push to main , not on pull request
+        # copies docker-compose and config files to EC2
+        # then SSh in and does docker compose pull + up
+     
+      - name: Copy config files to EC2
+        if: github.ref == "refs/heads/main" && github.event_name == "push"
+        uses: appleboy/scp-action@v1.0.7
+        with: 
+            host: ${{secrets.EC2_HOST}}
+            username: ubuntu
+            key: ${{secrets.EC2_SSH_KEY}}
+            source: "docker-compose.prod.yml,grafana/,prometheus.yml"
+            target: "/app"
+
+      - name: Write .env to EC2
+        if: github.ref == "refs/heads/main" && github.event_name == "push"
+        uses: appleboy/ssh-action@v1.0.3
+        with: 
+            host: ${{secrets.EC2_HOST}}
+            username: ubuntu
+            key: ${{secrets.EC2_SSH_KEY}}
+            script: |
+                mkdir -p /app
+                cat > /app/.env << 'EOF'
+                POSTGRES_USER=${{secrets.POSTGRES_USER}}
+                POSTGRES_PASSWORD=${{secrets.POSTGRES_PASSWORD}}
+                POSTGRES_DB=${{secrets.POSTGRES_DB}}
+
+                # Use localhost ONLY for running the app outside of Docker on your host machine
+                DATABASE_URL=${{secrets.DATABASE_URL}}
+                REDIS_URL=${{secrets.REDIS_URL}}
+                RESEND_API_KEY=${{secrets.RESEND_API_KEY}}
+                NOTIFICATION_EMAIL=${{secrets.NOTIFICATION_EMAIL}}
+
+                DISCORD_WEBHOOK_URL=${{secrets.DISCORD_WEBHOOK_URL}}
+                LOG_LEVEL=${{secrets.LOG_LEVEL}}
+                PORT=${{secrets.PORT}}
+                NODE_ENV=${{secrets.NODE_ENV}}
+                GRAFANA_USER=${{secrets.GRAFANA_USER}}
+                GRAFANA_PASSWORD=${{secrets.GRAFANA_PASSWORD}}
+                EOF
+      
+                - name: Deploy on EC2
+                  if: github.ref == "refs/heads/main" && github.event_name == "push"
+                  uses: appleboy/ssh-action@v1.0.3
+                  with:
+                    host: ${{secrets.EC2_HOST}}
+                    username: ubuntu
+                    key: ${{secrets.EC2_SSH_KEY}}
+                    script: | 
+                        cd /app
+                        
+                        # pull latest image
+                        docker compose -f docker-compose.prod.yml pull
+                        #restart contaniner with new image
+                        docker compose -f docker-compose.prod.yml up -d --remove-orphans
+                        
+                        # verify deployment succeeded
+                        sleep 10
+
+                        curl --fail http://localhost:3000/api/v1/health || exit 1
+
+                        echo "Deploy successfull -$(date)"
