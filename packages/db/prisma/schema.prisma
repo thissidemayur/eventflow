@@ -35,16 +35,18 @@ model Event {
   errorMessage String? @map("error_message")
   attemptCount Int @default(0) @map("attempt_count")
   lastError String? @map("last_error")
+  correlationId String? @map("correlation_id")
   receivedAt DateTime @map("received_at")
   processedAt DateTime? @map("processed_at")
   processingDurationMs Int? @map("processing_duration_ms")
   createdAt DateTime
 
-  @@index([tenantId]) // query event for a tenant
-  @@index([status])  //query all failed events
-  @@index([eventType]) // query by event type
-  @@index([receivedAt]) // time-range quries
+  @@index([tenantId])
+  @@index([status])  
+  @@index([eventType]) 
+  @@index([receivedAt]) 
   @@index([idempotencyKey])
+  @@index([correlationId])
   @@map("events")
 
 }
