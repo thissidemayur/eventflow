@@ -4,6 +4,7 @@ declare module "express-serve-static-core" {
   interface Request {
     apiKeyId?: string;
     tenantId?: string;
-    validatedEvent?:EventInput
+    validatedEvent?:EventInput;
+    correlationId?: string;
   }
 }
