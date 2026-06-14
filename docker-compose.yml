@@ -61,6 +61,7 @@ services:
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      ADMIN_SECRET: ${ADMIN_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,6 +75,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  seed:
+    container_name: eventflow_seed
+    build:
+      context: .
+      dockerfile: app/api/Dockerfile
+      args:
+        DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+    command: sh -c "node packages/db/dist/seed.ts"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      
 
   worker:
     container_name: eventflow_worker
@@ -99,8 +115,11 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
     restart: "unless-stopped"
 
+  
   prometheus:
     image: prom/prometheus:v2.51.0
     container_name: eventflow_prometheus
