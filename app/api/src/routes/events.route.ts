@@ -6,9 +6,11 @@ import { apiKeyRateLimit } from "../middleware/apikeyRateLimit.js";
 import { prisma } from "@eventflow/db";
 import { ipRateLimit } from "../middleware/ipRateLimit.js";
 import { createLogger, metrics } from "@eventflow/shared";
+import { redis } from "../config/redis.js";
 
 const router = Router();
 const logger = createLogger("api:events");
+const EVENT_CACHE_TTL_SECONDS = 5;
 
 router.get(
   "/events",
@@ -16,7 +18,18 @@ router.get(
   authMiddleware,
   apiKeyRateLimit,
   async (req: Request, res: Response) => {
+    const tenantId = req.tenantId
+    const cacheKey = `events:list:${tenantId}`
+
     try {
+      const cached = await redis.get(cacheKey)
+      if(cached) {
+        metrics.increment("events.list_cache_hit")
+        return res.status(200).json(JSON.parse(cached))
+      }
+
+      metrics.increment("events.list_cache_miss")
+
       const events = await prisma.event.findMany({
         where: { tenantId: req.tenantId! },
         orderBy: { receivedAt: "desc" },
@@ -37,6 +50,9 @@ router.get(
           correlationId:true,
         },
       });
+
+      // step3: populate cache
+      await redis.set(cacheKey,JSON.stringify(events),"EX",EVENT_CACHE_TTL_SECONDS)
 
       return res.status(200).json(events);
     } catch (error: any) {
