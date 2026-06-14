@@ -54,6 +54,7 @@ services:
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
       RESEND_API_KEY: ${RESEND_API_KEY}
       NOTIFICATION_EMAIL: ${NOTIFICATION_EMAIL}
+      ADMIN_SECRET: ${ADMIN_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
