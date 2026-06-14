@@ -9,6 +9,10 @@ export const registry = new Registry()
 collectDefaultMetrics({register:registry,prefix:"eventflow_"})
 
 const counterDefinitions: Record<string, string> = {
+    // admin auth
+    admin_auth_failed: "total Failed Admin Auth",
+    admin_tenant_created: "Total tenant created",
+    // api key
   auth_success_total: "Total successful API key authentications",
   auth_missing_key_total: "Total requests with missing API key",
   auth_invalid_key_total: "Total requests with invalid API key",
