@@ -8,7 +8,10 @@ const logger = createLogger("worker:processor")
 
 export async function processEvent(job: Job<EventJob>) {
     const startTime = Date.now()
-    const log = logger.child({jobId:job.id,tenantId:job.data.tenantId})
+    const correlationId = job.data.correlationId;
+
+    const log = logger.child({jobId:job.id,tenantId:job.data.tenantId,correlationId})
+
     log.info({eventType:job.data.eventType},"job started")
     metrics.increment("jobs.started")
     const data = job.data
@@ -28,6 +31,7 @@ export async function processEvent(job: Job<EventJob>) {
           payload: data.payload as Prisma.InputJsonValue,
           status: "processing",
           attemptCount: job.attemptsMade,
+          correlationId,
           receivedAt: new Date(data.receivedAt),
           processedAt: null,
           createdAt: new Date(),
