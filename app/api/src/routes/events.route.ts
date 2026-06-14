@@ -34,6 +34,7 @@ router.get(
           createdAt: true,
           lastError: true,
           idempotencyKey: true,
+          correlationId:true,
         },
       });
 
@@ -79,6 +80,7 @@ router.get(
           createdAt: true,
           lastError: true,
           idempotencyKey: true,
+          correlationId:true,
         },
       });
 

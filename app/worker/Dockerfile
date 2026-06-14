@@ -13,7 +13,7 @@ COPY packages/db/package.json ./packages/db/
 COPY app/worker/package.json ./app/worker/
 
 
-RUN npm install
+RUN npm ci
 
 COPY packages/shared/ ./packages/shared/
 COPY packages/db/ ./packages/db/

@@ -11,7 +11,7 @@ COPY packages/db/package.json ./packages/db/
 COPY app/api/package.json ./app/api/
 
 # install all dependecies
-RUN npm install 
+RUN npm ci 
 
 # COPY source code
 COPY packages/shared ./packages/shared/
