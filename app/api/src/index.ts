@@ -4,6 +4,7 @@ import { createLogger, metrics } from "@eventflow/shared";
 import { metricRouter } from "./routes/metrics.route.js";
 import { healthRouter } from "./routes/health.route.js";
 import { correlationIdMiddleware } from "./middleware/correlationId.js";
+import { adminRouter } from "./routes/admin.route.js";
 
 const app = express();
 const logger = createLogger("api:index");
@@ -47,6 +48,7 @@ app.set("trust proxy", false); // no proxy use
 app.use("/api/v1", eventRouter);
 app.use("/api/v1", metricRouter);
 app.use("/api/v1", healthRouter);
+app.use("/api/v1", adminRouter);
 
 const PORT = process.env.PORT ?? 3000;
 
