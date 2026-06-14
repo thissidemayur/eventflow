@@ -9,14 +9,17 @@ export const registry = new Registry()
 collectDefaultMetrics({register:registry,prefix:"eventflow_"})
 
 const counterDefinitions: Record<string, string> = {
-    // admin auth
-    admin_auth_failed: "total Failed Admin Auth",
-    admin_tenant_created: "Total tenant created",
-    // api key
+  // admin auth
+  admin_auth_failed: "total Failed Admin Auth",
+  admin_tenant_created: "Total tenant created",
+
+  // api key
   auth_success_total: "Total successful API key authentications",
   auth_missing_key_total: "Total requests with missing API key",
   auth_invalid_key_total: "Total requests with invalid API key",
   auth_error_total: "Total auth DB lookup errors",
+  auth_cache_hit_total: "Total API key auth served from cache",
+  auth_cache_miss_total: "Total API key auth requiring DB lookup",
 
   // Rate limiting — IP
   ratelimit_ip_allowed_total: "Total requests allowed by IP rate limiter",
@@ -34,7 +37,9 @@ const counterDefinitions: Record<string, string> = {
   events_accepted_total: "Total events accepted and enqueued",
   events_duplicate_total: "Total idempotent duplicate requests",
   events_enqueue_error_total: "Total failures to enqueue events",
-
+  events_list_cache_hit_total: "Total events list responses served from cache",
+  events_list_cache_miss_total:
+    "Total events list cache misses requiring DB query",
   // Jobs (worker)
   jobs_started_total: "Total jobs picked up by worker",
   jobs_completed_total: "Total jobs completed successfully",
@@ -57,8 +62,6 @@ const counterDefinitions: Record<string, string> = {
   // Infrastructure
   postgres_down_total: "Total times postgres health check failed",
   redis_down_total: "Total times redis health check failed",
-
-
 };
 
 const counters = new Map<string,Counter>();
