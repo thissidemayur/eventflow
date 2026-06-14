@@ -157,6 +157,7 @@ jobs:
                 NODE_ENV=${{secrets.NODE_ENV}}
                 GRAFANA_USER=${{secrets.GRAFANA_USER}}
                 GRAFANA_PASSWORD=${{secrets.GRAFANA_PASSWORD}}
+                ADMIN_SECRET=${{secrets.ADMIN_SECRET}}
                 EOF
       
                 - name: Deploy on EC2
