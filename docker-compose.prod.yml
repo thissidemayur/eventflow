@@ -126,6 +126,20 @@ services:
       - prometheus
     restart: unless-stopped
 
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: eventflow_node_exporter
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
 volumes:
   postgres_data:
   redis_data:
