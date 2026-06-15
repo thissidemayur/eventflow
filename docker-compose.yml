@@ -83,7 +83,7 @@ services:
       dockerfile: app/api/Dockerfile
       args:
         DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
-    command: sh -c "node packages/db/dist/seed.ts"
+    command: sh -c "node packages/db/dist/seed.js"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
