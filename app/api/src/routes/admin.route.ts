@@ -1,6 +1,6 @@
 import { createLogger, metrics } from "@eventflow/shared";
 import { Request, Response,Router } from "express";
-import { adminAUthMiddleware } from "../middleware/adminAuth";
+import { adminAUthMiddleware } from "../middleware/adminAuth.js";
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { prisma } from "@eventflow/db";
 
