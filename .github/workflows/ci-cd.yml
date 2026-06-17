@@ -52,7 +52,7 @@ jobs:
         run: |
           docker build \
           -t eventflow-api:ci \
-          -f app/api/Dockerfile \ 
+          -f app/api/Dockerfile \
           .
 
       - name: Build Worker Docker image
@@ -106,7 +106,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: | 
             docker build \ 
-              -f app/api/Dockerfile \ 
+              -f app/api/Dockerfile \
               -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-api:latest \
               -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-api:${{github.sha}} \
               . 
@@ -118,7 +118,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
             docker build \
-            -f app/worker/Dockerfile \ 
+            -f app/worker/Dockerfile \
             -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-worker:latest \
             -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-worker:${{github.sha}} \
             .
