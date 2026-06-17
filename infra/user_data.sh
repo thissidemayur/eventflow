@@ -24,17 +24,16 @@ sudo apt update
 
 # ==============  Install the Docker packages ==============
 
-sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 
 
 ## ============== enable and statrt docker ==============
 sudo systemctl enable docker
 
+sudo systemctl start docker
 sudo systemctl status docker
 
-sudo systemctl start docker
 
 # ============== Allow ubuntu user to run docker without sudo ==============
 usermod -aG docker ubuntu
