@@ -107,7 +107,8 @@ jobs:
       - name: Push API image
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: | 
-            docker build \ 
+            docker build \
+               --build-arg DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy \
               -f app/api/Dockerfile \
               -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-api:latest \
               -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-api:${{github.sha}} \
@@ -120,6 +121,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
             docker build \
+            --build-arg DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy \
             -f app/worker/Dockerfile \
             -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-worker:latest \
             -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-worker:${{github.sha}} \
