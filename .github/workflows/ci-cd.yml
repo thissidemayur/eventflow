@@ -26,15 +26,10 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Debug Prisma
-        run: |
-           npm ls @prisma/client
-             npm ls prisma
-             ls -la node_modules/@prisma/client
-             cat node_modules/@prisma/client/index.d.ts
-  
         # genereate prisma client
       - name: Generate Prisma Client
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
         run: npm run generate -w @eventflow/db
 
         # Build and typecheck the TS file
