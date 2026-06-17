@@ -123,7 +123,7 @@ jobs:
      
       - name: Copy config files to EC2
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: appleboy/scp-action@v1.0.7
+        uses: appleboy/scp-action@v1
         with: 
             host: ${{secrets.EC2_HOST}}
             username: ubuntu
@@ -133,7 +133,7 @@ jobs:
 
       - name: Write .env to EC2
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1
         with: 
             host: ${{secrets.EC2_HOST}}
             username: ubuntu
