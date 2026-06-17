@@ -176,26 +176,25 @@ jobs:
                 ADMIN_SECRET=${{secrets.ADMIN_SECRET}}
                 EOF
       
-                - name: Deploy on EC2
-                  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-                  uses: appleboy/ssh-action@v1.0.3
-                  with:
-                    host: ${{secrets.EC2_HOST}}
-                    username: ubuntu
-                    key: ${{secrets.EC2_SSH_KEY}}
-                    script: | 
-                        cd /app
-                        
-                        # pull latest image
-                        docker compose -f docker-compose.prod.yml pull
-                        #restart contaniner with new image
-                        docker compose -f docker-compose.prod.yml up -d --remove-orphans
-                        
-                        # verify deployment succeeded
-                        sleep 10
-
-                        curl --fail http://localhost:3000/api/v1/health || exit 1
-
-                        echo "Deploy successfull -$(date)"
       - name: Deploy on EC2
-        run: echo "Deploy on EC2"
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{secrets.EC2_HOST}}
+          username: ubuntu
+          key: ${{secrets.EC2_SSH_KEY}}
+          script: | 
+              cd /app
+                        
+               # pull latest image
+                docker compose -f docker-compose.prod.yml pull
+                #restart contaniner with new image
+                 docker compose -f docker-compose.prod.yml up -d --remove-orphans
+                        
+                  # verify deployment succeeded
+                  sleep 10
+
+                  curl --fail http://localhost:3000/api/v1/health || exit 1
+
+                  echo "Deploy successfull -$(date)"
+     
