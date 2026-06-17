@@ -49,16 +49,17 @@ jobs:
 
     # Docker build- check dockerfiles are working fine
       - name: Build API Docker image
-        run: | 
+        run: |
           docker build \
           -t eventflow-api:ci \
-          -f app/api/Dockerfile \ 
-          .
+          -f app/api/Dockerfile \
+           .
+
       - name: Build Worker Docker image
         run: |
          docker build \
          -t eventflow-worker:ci  \
-         -f app/worker\Dockerfile\
+         -f app/worker/Dockerfile \
          .
 
     # CI: Smoke test
@@ -105,9 +106,10 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
             docker build \
+             -f app/api/Dockerfile \
             -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-api:latest \
             -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-api:${{github.sha}} \
-            ./app/api
+            .
             docker push ${{secrets.DOCKERHUB_USERNAME}}/eventflow-api:latest
             docker push ${{secrets.DOCKERHUB_USERNAME}}/eventflow-api:${{github.sha}}
 
@@ -115,9 +117,10 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
             docker build \
+            -f app/worker/Dockerfile \
             -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-worker:latest \
             -t ${{secrets.DOCKERHUB_USERNAME}}/eventflow-worker:${{github.sha}} \
-            ./app/api
+            .
 
             docker push ${{secrets.DOCKERHUB_USERNAME}}/eventflow-worker:latest 
             docker push ${{secrets.DOCKERHUB_USERNAME}}/eventflow-worker:${{github.sha}} \
