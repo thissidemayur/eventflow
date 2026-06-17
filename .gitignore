@@ -142,3 +142,24 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+
+
+# Local gitignore for Terraform
+
+# Block the local working directory
+.terraform/
+
+# Block local state files
+*.tfstate
+*.tfstate.backup
+
+# Block all variable files containing potential secrets
+*.tfvars
+*.tfvars.json
+
+# Block crash logs
+crash.log
+
+# DO NOT block .terraform.lock.hcl (Commit this file)
+! .terraform.lock.hcl
