@@ -6,7 +6,6 @@ on:
     pull_request:
         branches: [main]
 
-
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -15,7 +14,6 @@ jobs:
         
       - name: Checkout code
         uses: actions/checkout@v6
-
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -49,13 +47,19 @@ jobs:
         run: | 
             npm run build -w @eventflow/worker
 
-
     # Docker build- check dockerfiles are working fine
       - name: Build API Docker image
-        run: docker build -t eventflow-api:ci ./app/api
+        run: | 
+          docker build \
+          -t eventflow-api:ci \
+          -f app/api/Dockerfile \ 
+          .
       - name: Build Worker Docker image
-        run: docker build -t eventflow-worker:ci ./app/worker
-
+        run: |
+         docker build \
+         -t eventflow-worker:ci  \
+         -f app/worker\Dockerfile\
+         .
 
     # CI: Smoke test
       - name: Create .env for smoke test
