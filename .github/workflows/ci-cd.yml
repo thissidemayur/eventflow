@@ -51,6 +51,7 @@ jobs:
       - name: Build API Docker image
         run: |
           docker build \
+          --build-arg DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy \
           -t eventflow-api:ci \
           -f app/api/Dockerfile \
           .
@@ -58,6 +59,7 @@ jobs:
       - name: Build Worker Docker image
         run: |
          docker build \
+         --build-arg DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy \
          -t eventflow-worker:ci  \
          -f app/worker/Dockerfile \
          .
@@ -193,3 +195,5 @@ jobs:
                         curl --fail http://localhost:3000/api/v1/health || exit 1
 
                         echo "Deploy successfull -$(date)"
+      - name: Deploy on EC2
+        run: echo "Deploy on EC2"
