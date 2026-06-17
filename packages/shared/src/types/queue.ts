@@ -1,10 +1,10 @@
-import { Prisma } from "@prisma/client";
+// import { Prisma } from "@prisma/client";
 
 export const QUEUE_NAME = "events";
 
 export interface EventJob {
   eventType: string;
-  payload: Prisma.InputJsonValue;
+  payload: Record<string, unknown>; //Prisma.InputJsonValue;
   tenantId: string;
   apikeyId: string;
   idempotencyKey?: string;
