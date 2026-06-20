@@ -11,16 +11,18 @@ A production-grade event ingestion and async processing system. Accepts events v
 - [Project Structure](#project-structure)
 - [Quickstart (Local)](#quickstart-local)
 - [API Reference](#api-reference)
+- [API Documentation (Swagger)](#api-documentation-swagger)
 - [Admin: Provisioning Tenants](#admin-provisioning-tenants)
 - [Rate Limiting](#rate-limiting)
 - [Caching](#caching)
 - [Correlation IDs / Distributed Tracing](#correlation-ids--distributed-tracing)
 - [Reliability: Idempotency, Retries, DLQ](#reliability-idempotency-retries-dlq)
 - [Observability: Logs, Metrics, Dashboards](#observability-logs-metrics-dashboards)
+- [Load Testing Results](#load-testing-results)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Production Deployment (AWS)](#production-deployment-aws)
 - [Environment Variables](#environment-variables)
-- [Known Limitations & Design Decisions](#known-limitations--design-decisions)
+- [Known Limitations and Design Decisions](#known-limitations-and-design-decisions)
 
 ---
 
@@ -56,10 +58,10 @@ Client
   │
   └─▶ [Resend Email]           same idempotency lock, parallel with Discord
   │
-  └─▶ [events-dlq]              after 3 retries with exponential backoff
+  └─▶ [events-dlq]             after 3 retries with exponential backoff
 ```
 
-**Why API and Worker are separate processes:** different failure domains and different scaling shapes. The API is latency-bound (returns 202 in milliseconds regardless of downstream work); the worker is throughput-bound. A slow Discord webhook or a CPU-heavy job in the worker never blocks the API's event loop.
+**Why API and Worker are separate processes:** different failure domains and different scaling shapes. The API is latency-bound (returns 202 in milliseconds regardless of downstream work); the worker is throughput-bound. A slow Discord webhook or a CPU-heavy job in the worker never blocks the API event loop.
 
 **Why a queue instead of synchronous processing:** at-least-once delivery from BullMQ, combined with idempotency at three layers (API, DB upsert, notification insert-lock), gives effectively-exactly-once behavior without a distributed transaction.
 
@@ -76,6 +78,7 @@ Cache / Queue    Redis 7 (AOF persistence)
 Validation       Zod 3.x
 Logging          Pino (structured JSON, pretty in dev)
 Metrics          prom-client (Prometheus exposition format)
+API Docs         OpenAPI 3.0 / Swagger UI (swagger-jsdoc + swagger-ui-express)
 Notifications    Discord webhook, Resend (email)
 Monorepo         npm workspaces
 Containers       Docker (multi-stage builds) + Docker Compose
@@ -94,7 +97,8 @@ eventflow/
 │   │   └── src/
 │   │       ├── config/
 │   │       │   ├── queue.ts        BullMQ producer queue
-│   │       │   └── redis.ts        Redis connections (general + queue)
+│   │       │   ├── redis.ts        Redis connections (general + queue)
+│   │       │   └── swagger.ts      OpenAPI 3.0 spec definition
 │   │       ├── middleware/
 │   │       │   ├── correlationId.ts   x-request-id generation/propagation
 │   │       │   ├── auth.ts            API key auth + Redis cache-aside
@@ -125,7 +129,7 @@ eventflow/
 │   │   │   └── migrations/
 │   │   └── src/
 │   │       ├── client.ts            PrismaClient singleton
-│   │       ├── seed.ts               demo tenant + API key provisioning
+│   │       ├── seed.ts              demo tenant + API key provisioning
 │   │       └── index.ts
 │   │
 │   └── shared/                      shared across api and worker
@@ -164,7 +168,7 @@ cd eventflow
 cp .env.example .env
 ```
 
-`.env.example` ships with safe local defaults. Generate your own admin secret:
+Generate your own admin secret:
 
 ```bash
 openssl rand -hex 32   # paste the result into ADMIN_SECRET in .env
@@ -176,7 +180,7 @@ openssl rand -hex 32   # paste the result into ADMIN_SECRET in .env
 docker compose up -d
 ```
 
-This builds local images and starts: `postgres`, `redis`, `migrate` (runs once), `seed` (runs once), `api`, `worker`, `prometheus`, `grafana`.
+Starts: postgres, redis, migrate (runs once), seed (runs once), api, worker, prometheus, grafana.
 
 ### 3. Get your demo API key
 
@@ -184,14 +188,14 @@ This builds local images and starts: `postgres`, `redis`, `migrate` (runs once),
 docker compose logs seed
 ```
 
-The `seed` service provisions a demo tenant (`tenant-demo`) and prints a raw API key — shown only once, on first run. Copy it:
+The seed service provisions a demo tenant and prints a raw API key — shown only once on first run:
 
 ```bash
 export API_KEY="ef_live_..."
 export BASE="http://localhost:3000/api/v1"
 ```
 
-If you've run this before and the demo tenant already exists, `seed` logs will say so — use `POST /api/v1/admin/tenants` (see below) to provision a fresh key.
+If the demo tenant already exists from a previous run, use `POST /api/v1/admin/tenants` to provision a fresh key.
 
 ### 4. Send your first event
 
@@ -212,26 +216,27 @@ curl -s -X POST $BASE/events \
 curl -s $BASE/events/1 -H "x-api-key: $API_KEY" | jq
 ```
 
-### 6. Explore observability
+### 6. Explore
 
-```
-Grafana:     http://localhost:4000   (admin / value of GRAFANA_PASSWORD)
-Prometheus:  http://localhost:9090
-API metrics: http://localhost:3000/api/v1/metrics
-Worker:      http://localhost:9091/metrics, http://localhost:9091/health
-```
+| Service | URL | Credentials |
+|---|---|---|
+| Grafana dashboard | <http://localhost:4000> | admin / GRAFANA_PASSWORD |
+| Prometheus | <http://localhost:9090> | — |
+| Swagger UI | <http://localhost:3000/api/v1/docs> | — |
+| API metrics | <http://localhost:3000/api/v1/metrics> | — |
+| Worker health | <http://localhost:9091/health> | — |
 
 ---
 
 ## API Reference
 
-All endpoints except `/health`, `/metrics`, and `/admin/*` require an API key:
+All endpoints except `/health`, `/metrics`, `/metrics/json`, `/docs`, and `/admin/*` require:
 
 ```
 x-api-key: ef_live_...
 ```
 
-Every response includes `x-request-id` (see [Correlation IDs](#correlation-ids--distributed-tracing)).
+Every response includes `x-request-id` for distributed tracing.
 
 ### POST /api/v1/events
 
@@ -252,33 +257,21 @@ curl -s -X POST $BASE/events \
 | `payload` | object | yes | max 64KB |
 | `idempotencyKey` | UUID string | no | enables exactly-once semantics |
 
-**202 — new event**
+**202 — new event:** `{ "accepted": true, "jobId": "42", "duplicate": false }`
 
-```json
-{ "accepted": true, "jobId": "42", "duplicate": false }
-```
+**202 — duplicate:** `{ "accepted": false, "jobId": "41", "duplicate": true }`
 
-**202 — duplicate (idempotent replay)**
+**400:** `{ "error": "Validation failed", "details": { "type": ["Required"] } }`
 
-```json
-{ "accepted": false, "jobId": "41", "duplicate": true }
-```
+**401:** `{ "error": "Missing API key" }` or `{ "error": "Invalid API key" }` — identical message prevents key enumeration
 
-**400 — validation failed**
-
-```json
-{ "error": "Validation failed", "details": { "type": ["Required"] } }
-```
-
-**401** — `{ "error": "Missing API key" }` or `{ "error": "Invalid API key" }` (identical message — prevents key enumeration)
-
-**429** — `{ "error": "Rate limit exceeded", "retryAfter": 60 }`
+**429:** `{ "error": "Rate limit exceeded", "retryAfter": 60 }`
 
 ---
 
 ### GET /api/v1/events
 
-Returns the latest 50 events for the caller's tenant, newest first. Served from a 5-second Redis cache (see [Caching](#caching)).
+Returns the latest 50 events for the caller's tenant, newest first. Served from a 5-second Redis cache.
 
 ```bash
 curl -s $BASE/events -H "x-api-key: $API_KEY" | jq
@@ -288,11 +281,11 @@ curl -s $BASE/events -H "x-api-key: $API_KEY" | jq
 
 ### GET /api/v1/events/:jobId
 
+Returns full event detail including `payload` and `correlationId`. Returns `404` for both "not found" and "belongs to another tenant" — never confirms cross-tenant resource existence.
+
 ```bash
 curl -s $BASE/events/42 -H "x-api-key: $API_KEY" | jq
 ```
-
-Returns full event detail including `payload` and `correlationId`. Returns `404` for both "not found" and "belongs to another tenant" — never confirms cross-tenant resource existence.
 
 | `status` | Meaning |
 |---|---|
@@ -305,33 +298,55 @@ Returns full event detail including `payload` and `correlationId`. Returns `404`
 
 ### GET /api/v1/health
 
+No auth required. Used by load balancers and Docker healthchecks.
+
 ```bash
 curl -s $BASE/health | jq
+# { "status": "ok", "checks": { "postgres": "healthy", "redis": "healthy" }, "timestamp": "..." }
 ```
 
-```json
-{ "status": "ok", "checks": { "postgres": "healthy", "redis": "healthy" }, "timestamp": "..." }
-```
-
-`503` if either dependency is down. No auth required — used by load balancers / Docker healthchecks.
+Returns 503 if either dependency is down.
 
 ---
 
 ### GET /api/v1/metrics
 
-Prometheus exposition format — scraped by Prometheus every 15s. No auth (internal network only in production).
+Prometheus exposition format, scraped every 15s. No auth required (internal network only in production).
 
-```bash
-curl -s $BASE/metrics
+`GET /api/v1/metrics/json` returns the same data as JSON.
+
+---
+
+## API Documentation (Swagger)
+
+Interactive API documentation at:
+
+```
+http://localhost:3000/api/v1/docs
 ```
 
-`GET /api/v1/metrics/json` returns the same data as JSON for ad-hoc inspection.
+Built with OpenAPI 3.0 using `swagger-jsdoc` + `swagger-ui-express`. The spec is generated at runtime from `@openapi` JSDoc annotations on each route handler — annotations live next to the implementation in the same file, keeping the spec in sync with the code automatically.
+
+Features:
+
+- **Authorize button** — paste your API key once, all "Try it out" requests use it automatically
+- **Try it out** — send real HTTP requests to your running API directly from the browser
+- **Request duration** — observe cache hit vs miss latency differences live
+- **All schemas documented** — EventSummary, EventDetail, ValidationError, UnauthorizedError, RateLimitError
+
+Raw OpenAPI spec (importable into Postman):
+
+```bash
+curl -s http://localhost:3000/api/v1/docs/spec | jq '.paths | keys'
+# ["/api/v1/admin/tenants", "/api/v1/events", "/api/v1/events/{jobId}",
+#  "/api/v1/health", "/api/v1/metrics", "/api/v1/metrics/json"]
+```
 
 ---
 
 ## Admin: Provisioning Tenants
 
-In a real multi-tenant SaaS, `tenantId` represents an account/organization — assigned by the platform when an account is created, not chosen by the client. `POST /api/v1/admin/tenants` simulates that provisioning step.
+`POST /api/v1/admin/tenants` simulates the platform-side tenant provisioning step that a real signup flow would call.
 
 ```bash
 curl -s -X POST $BASE/admin/tenants \
@@ -344,12 +359,12 @@ curl -s -X POST $BASE/admin/tenants \
 {
   "tenantId": "tenant-acme-corp",
   "apiKeyId": "...",
-  "rawApiKey": "ef_live_...",
-  "warning": "Store this key now. It cannot be retrieved again."
+  "rawAPiKey": "ef_live_...",
+  "warning": "Store this key now. It cannot be retrieved again"
 }
 ```
 
-`tenantId` is optional — omit it to auto-generate one. The raw API key is shown exactly once, matching how AWS/Stripe display secret keys at creation time. Protected by `ADMIN_SECRET` (a shared operator secret, not a tenant credential, not stored in the database).
+`tenantId` is optional — omit to auto-generate. Protected by `ADMIN_SECRET` (shared operator secret, not stored in the database, not a tenant credential).
 
 ---
 
@@ -357,11 +372,11 @@ curl -s -X POST $BASE/admin/tenants \
 
 | Layer | Algorithm | Limit | Scope | Fail mode |
 |---|---|---|---|---|
-| IP protection | Fixed window (`INCR` + `EXPIRE`) | 200/min | per IP | **open** — Redis down ⇒ allow |
-| API key quota | Sliding window (sorted set, pipelined) | 100/min | per tenant | **closed** — Redis down ⇒ 503 |
+| IP protection | Fixed window (INCR + EXPIRE) | 200/min | per IP | open — Redis down allows |
+| API key quota | Sliding window (sorted set, pipelined) | 100/min | per tenant | closed — Redis down returns 503 |
 | Discord outbound | Token bucket (Lua script, atomic) | 30/min (0.5/s refill) | shared across all workers | closed — BullMQ retries |
 
-IP limiting runs **before** auth — cheap rejection of unauthenticated floods. API key limiting runs **after** auth and enforces per-tenant SLAs with a sliding window (no boundary-reset exploit like fixed windows have). The Discord token bucket is implemented as an atomic Lua script so concurrent workers can't double-spend tokens via a read-then-write race.
+IP limiting runs before auth — cheap rejection of unauthenticated floods. API key limiting runs after auth — enforces per-tenant SLAs using a sliding window (no boundary-reset exploit). The Discord token bucket uses an atomic Lua script so concurrent workers cannot double-spend tokens via a read-then-write race.
 
 429 responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` headers.
 
@@ -369,32 +384,28 @@ IP limiting runs **before** auth — cheap rejection of unauthenticated floods. 
 
 ## Caching
 
-EventFlow uses **cache-aside (lazy loading)** with Redis for two read paths. Both use the existing `api:general` Redis connection (separate from the BullMQ queue connection).
+Cache-aside (lazy loading) with Redis for two read paths.
 
-### 1. API key authentication — `apikey:cache:{sha256(key)}`, TTL 60s
+### API key authentication — `apikey:cache:{sha256(key)}`, TTL 60s
 
 ```
 Request → cache hit?
-  yes → use cached {apiKeyId, tenantId, active} → done (no DB)
+  yes → use cached {apiKeyId, tenantId, active} — no DB call
   no  → query Postgres
           → key valid?   cache {active: true},  proceed
           → key revoked? cache {active: false}, return 401
-          → key unknown? don't cache (avoid caching arbitrary garbage), return 401
+          → key unknown? do not cache (avoid bloating Redis with garbage), return 401
 ```
 
-**Why:** every authenticated request needs this lookup — without caching it's a guaranteed DB round-trip on every request. **Negative caching matters too**: if a key is revoked but a misbehaving client keeps sending it, caching the `{active: false}` result for 60s prevents that client from hammering Postgres on every retry — the 401 is returned identically, but from Redis instead of Postgres.
+Negative caching matters: a revoked key cached as `{active: false}` prevents a misbehaving client from hammering Postgres on every retry. The 401 is identical either way — only the source (Redis vs Postgres) changes.
 
-**Tradeoff:** a revoked key remains valid for up to 60 seconds after revocation. Acceptable for this system; document this if building on top of it.
+Tradeoff: a revoked key remains valid for up to 60 seconds.
 
-### 2. Event list — `events:list:{tenantId}`, TTL 5s
+### Event list — `events:list:{tenantId}`, TTL 5s
 
-```
-GET /events → cache hit? return cached array : query DB (50 rows, tenant-scoped, ordered) → cache 5s → return
-```
+TTL-based expiry rather than invalidate-on-write — simpler, avoids invalidation bugs, and 5-second-stale list data is normal UX for a dashboard.
 
-**Why TTL-based instead of invalidate-on-write:** a 50-row tenant-scoped `ORDER BY` query is the most expensive read in the system; a 5-second-stale list view is normal UX (same as an email inbox). TTL expiry is simpler and avoids invalidation bugs (e.g. forgetting to bust the cache from the worker process when a job completes).
-
-**Deliberately NOT cached:** `GET /events/:jobId` (single-row indexed lookup — already sub-millisecond, caching adds invalidation complexity for no measurable gain) and `/health` (a load balancer needs the *live* state of dependencies; a cached health check could mask a dead instance).
+Not cached: `GET /events/:jobId` (single-row indexed lookup, already sub-millisecond) and `/health` (must always reflect live dependency state).
 
 Metrics: `auth_cache_hit/miss_total`, `events_list_cache_hit/miss_total`.
 
@@ -402,19 +413,18 @@ Metrics: `auth_cache_hit/miss_total`, `events_list_cache_hit/miss_total`.
 
 ## Correlation IDs / Distributed Tracing
 
-Every request gets an `x-request-id` — read from the incoming header if the client supplied one, otherwise generated as a UUID. It's echoed back in the response header and threads through the entire pipeline:
+Every request gets an `x-request-id` — read from the incoming header if supplied, otherwise generated as a UUID. Threaded through the full pipeline:
 
 ```
-Client (optional x-request-id)
-  → API middleware attaches req.correlationId, logs it on every request log
-  → passed into BullMQ job data (EventJob.correlationId)
-  → Worker reads job.data.correlationId, attaches via pino child logger
-    → every worker log line (job started/completed/failed) includes it
-  → stored on the Event row (correlation_id column, indexed)
-  → preserved in DLQ entries via originalJob
+Client sends x-request-id (or API generates one)
+  → attached to req.correlationId
+  → logged on every API request log line
+  → passed into BullMQ job data
+  → worker reads it, attaches to pino child logger
+    → every worker log line includes correlationId
+  → stored on the Event row (indexed)
+  → preserved in DLQ entries
 ```
-
-**Why it matters:** with concurrent requests across two processes (API + worker), log lines are otherwise impossible to correlate. With this, `grep <correlationId>` across both services' logs — or `SELECT * FROM events WHERE correlation_id = '...'` — reconstructs the full lifecycle of a single request.
 
 ```bash
 curl -s -i -X POST $BASE/events \
@@ -422,10 +432,23 @@ curl -s -i -X POST $BASE/events \
   -H "content-type: application/json" \
   -H "x-request-id: trace-demo-001" \
   -d '{"type":"trace.test","payload":{"x":1}}'
-# response header: x-request-id: trace-demo-001
+# response: x-request-id: trace-demo-001
 
 curl -s $BASE/events -H "x-api-key: $API_KEY" | jq '.[0].correlationId'
 # "trace-demo-001"
+```
+
+To reconstruct the full lifecycle of a request across both processes:
+
+```bash
+# grep API logs:
+docker compose logs api | grep trace-demo-001
+
+# grep worker logs:
+docker compose logs worker | grep trace-demo-001
+
+# or query the database directly:
+# SELECT * FROM events WHERE correlation_id = 'trace-demo-001';
 ```
 
 ---
@@ -434,11 +457,11 @@ curl -s $BASE/events -H "x-api-key: $API_KEY" | jq '.[0].correlationId'
 
 ### Idempotency — three layers
 
-1. **API layer** — client-supplied `idempotencyKey` (UUID); `findUnique` before enqueue returns the existing `jobId` if already processed. A `P2002` unique-constraint race (two concurrent identical requests) is caught and resolved to the winner's `jobId`.
-2. **DB write (worker)** — `prisma.event.upsert` on `idempotencyKey`; falls back to `job-{jobId}` if the client didn't supply one.
-3. **Notifications** — `notification_log` row inserted *before* sending; the unique constraint acts as a mutex. `P2002` ⇒ already sent ⇒ skip. Discord and email use separate lock keys and run in parallel via `Promise.all`.
+1. **API layer** — client-supplied `idempotencyKey`; `findUnique` before enqueue returns the existing `jobId` on duplicate. A `P2002` unique-constraint race (two concurrent identical requests) is caught and resolved to the winner's `jobId`.
+2. **DB write (worker)** — `prisma.event.upsert` on `idempotencyKey`; falls back to `job-{jobId}` if none supplied.
+3. **Notifications** — `notification_log` row inserted before sending; unique constraint acts as a mutex. `P2002` means already sent, skip. Discord and email run in parallel via `Promise.all`.
 
-BullMQ guarantees **at-least-once** delivery; these three layers make that **effectively exactly-once**.
+BullMQ guarantees at-least-once delivery. These three layers make it effectively exactly-once.
 
 ### Retries
 
@@ -450,20 +473,13 @@ after 3 failures → events-dlq
 ### Dead Letter Queue
 
 ```bash
-# inspect
 curl -s http://localhost:9091/health | jq '.checks.dlq_waiting'
-
-# replay (10/batch, 2s between batches)
 docker compose exec worker node app/worker/dist/dlqReplay.js
 ```
 
-### Stalled job detection
-
-BullMQ's `QueueEvents` checks every 30s for jobs stuck in `active` state (worker crashed mid-job) and automatically re-queues them; the `stalled` event is logged.
-
 ### Graceful shutdown
 
-`SIGTERM` → close worker → close queue events/DLQ → quit all Redis connections → disconnect Prisma → exit 0. In-flight jobs drain before shutdown completes.
+SIGTERM → close worker → close queue events/DLQ → quit Redis connections → disconnect Prisma → exit 0.
 
 ---
 
@@ -471,21 +487,19 @@ BullMQ's `QueueEvents` checks every 30s for jobs stuck in `active` state (worker
 
 ### Structured logging (Pino)
 
-JSON in production, pretty-printed in development. Every log line includes `service`, and request/job logs include `correlationId`:
+JSON in production, pretty-printed in development. Every log line includes `service` and `correlationId`:
 
 ```json
 {"level":"info","time":"...","service":"worker:processor","jobId":"42","tenantId":"tenant-demo","correlationId":"trace-demo-001","durationMs":850,"msg":"job completed"}
 ```
 
-`LOG_LEVEL` controls verbosity: `debug | info | warn | error`.
-
 ### Metrics (Prometheus)
 
-Both API (`:3000/api/v1/metrics`) and worker (`:9091/metrics`) expose Prometheus-format metrics, including Node.js defaults (heap, event loop lag, GC) and custom counters covering auth, rate limiting, events, jobs, notifications, DLQ, and cache hit/miss rates.
+Both API (:3000/api/v1/metrics) and worker (:9091/metrics) expose Prometheus-format metrics. Custom counters cover auth, rate limiting, events, jobs, notifications, DLQ, and cache hit/miss rates. Node.js defaults (heap, event loop lag, GC) are also collected.
 
 ### Grafana
 
-Pre-provisioned at `http://localhost:4000` (folder: **EventFlow**) — no manual setup. Dashboard covers:
+Pre-provisioned dashboard at <http://localhost:4000> (no manual setup). Panels:
 
 - Events accepted / jobs completed vs failed (throughput)
 - Rate limit rejections, auth failures (security)
@@ -493,11 +507,60 @@ Pre-provisioned at `http://localhost:4000` (folder: **EventFlow**) — no manual
 - DLQ inflow + lifetime total
 - Notification send/fail rates
 
-Dashboard JSON is provisioned from `grafana/provisioning/dashboards/eventflow.json` — edit via the UI, then export JSON Model back into that file to persist changes.
-
 ### node-exporter (production only)
 
-`docker-compose.prod.yml` includes `node-exporter` on `:9100`, scraped by Prometheus — host-level CPU, memory, disk, and network metrics alongside application metrics. Not included in local dev (monitoring your own laptop isn't useful for this project's story).
+`docker-compose.prod.yml` adds node-exporter on :9100 — host-level CPU, memory, disk, and network metrics scraped by Prometheus alongside application metrics.
+
+---
+
+## Load Testing Results
+
+Tested with [autocannon](https://github.com/mcollina/autocannon).
+
+### Test 1 — Rate limiter under 20 concurrent connections (GET /events)
+
+```bash
+npx autocannon -c 20 -d 10 -H "x-api-key: $API_KEY" $BASE/events
+```
+
+```
+Latency:  p50 1ms  |  p99 5ms  |  max 46ms
+Req/Sec:  avg 10,535  |  min 8,828  |  max 11,135
+Result:   105k requests in 10s — 97 × 2xx, 105,257 × 429, 0 errors
+```
+
+The sliding-window rate limiter correctly rejected ~105k excess requests under real concurrent load with zero connection errors. Every rejected request received a proper 429 JSON response — no dropped connections, no timeouts. p99 of 5ms means even rejected requests are served fast.
+
+### Test 2 — 30 concurrent connections
+
+```bash
+npx autocannon -c 30 -d 10 -H "x-api-key: $API_KEY" $BASE/events
+```
+
+```
+Latency:  p50 2ms  |  p99 6ms  |  max 38ms
+Req/Sec:  avg 10,739
+Result:   108k requests in 10s — 0 × 2xx, 107,383 × 429, 0 errors
+```
+
+Going from 20 to 30 connections doubled median latency from 1ms to 2ms — expected behavior. More concurrent requests contend for the same Redis sorted-set operations in the sliding window algorithm, creating measurable queuing. System remained stable with zero errors.
+
+### Test 3 — Idempotency race condition (POST /events, 10 concurrent)
+
+```bash
+npx autocannon -c 10 -d 1 -m POST \
+  -H "x-api-key: $API_KEY" \
+  -H "content-type: application/json" \
+  -b '{"type":"race.test","payload":{"x":1},"idempotencyKey":"f47ac10b-58cc-4372-a567-0e02b2c3d479"}' \
+  $BASE/events
+```
+
+```
+Latency:  p50 1ms  |  p99 7ms  |  max 34ms
+Result:   ~6,300 requests in 1s — 100 × 2xx, 6,232 × 429, 0 errors
+```
+
+After the test, exactly one row exists in the database for that idempotency key. Ten concurrent connections firing the same key simultaneously produced one event — the P2002 unique-constraint race handling works correctly under real concurrency.
 
 ---
 
@@ -506,71 +569,53 @@ Dashboard JSON is provisioned from `grafana/provisioning/dashboards/eventflow.js
 `.github/workflows/ci-cd.yml` runs on every push/PR to `main`:
 
 ```
-1. Checkout, install deps (npm ci)
-2. Build: shared → db → api → worker (in dependency order)
-3. Build Docker images (api, worker) — validates Dockerfiles
-4. Smoke test:
-     docker compose up postgres redis
-     run migrations
-     docker compose up api worker
-     curl --fail /api/v1/health
-     docker compose down -v
+1. npm ci
+2. Build: shared → db → api → worker (dependency order enforced)
+3. Docker build (api, worker) — validates Dockerfiles
+4. Smoke test: compose up → migrate → health check → compose down
 ```
 
-On push to `main` only (not PRs), two additional stages run:
+On push to main only:
 
 ```
-5. Build + push images to Docker Hub
-     tags: :latest and :<git-sha>   (SHA tag enables exact rollback)
-6. Deploy to EC2
-     write .env from GitHub Secrets
-     scp docker-compose.prod.yml + grafana/ + prometheus.yml
-     ssh: docker compose -f docker-compose.prod.yml pull && up -d
-     curl --fail /api/v1/health
+5. Push images to Docker Hub (:latest + :<git-sha> — SHA enables rollback)
+6. Deploy to EC2: write .env from Secrets, scp compose file, docker compose pull && up -d
 ```
 
 ---
 
 ## Production Deployment (AWS)
 
-Infrastructure is defined in `infra/` (Terraform): a single EC2 instance, security group (22/3000/4000/9090), and Elastic IP. `user_data.sh` installs Docker + Docker Compose on first boot — no manual server setup.
+Infrastructure in `infra/` (Terraform): EC2 instance, security group, Elastic IP. `user_data.sh` installs Docker on first boot.
 
 ```bash
 cd infra
 terraform init
-terraform apply     # creates EC2, outputs the public IP
-# ... set GitHub Secrets: EC2_HOST, EC2_SSH_KEY, DOCKERHUB_USERNAME, DOCKERHUB_TOKEN,
-#     POSTGRES_*, DATABASE_URL, ADMIN_SECRET, GRAFANA_PASSWORD, etc.
-git push origin main   # CI/CD builds, pushes images, deploys
-terraform destroy   # tears everything down cleanly
+terraform apply     # outputs public IP
+git push origin main   # triggers CI/CD → deploys
+terraform destroy   # tears down cleanly
 ```
-
-`docker-compose.prod.yml` differs from local `docker-compose.yml` in two ways: it **pulls** pre-built images from Docker Hub (`${DOCKERHUB_USERNAME}/eventflow-api:latest`) instead of building from source, and it adds `node-exporter`. The `seed` service is local-only — production tenants are provisioned via `POST /api/v1/admin/tenants`.
 
 ---
 
 ## Environment Variables
 
-See `.env.example` for the full list with inline documentation. Key variables:
-
 | Variable | Required | Notes |
 |---|---|---|
 | `DATABASE_URL` | yes | Postgres connection string |
 | `REDIS_URL` | yes | Redis connection string |
-| `ADMIN_SECRET` | yes | Protects `/admin/*`. Generate: `openssl rand -hex 32` |
+| `ADMIN_SECRET` | yes | Protects /admin/*. Generate: openssl rand -hex 32 |
 | `DISCORD_WEBHOOK_URL` | no | Discord notification target |
-| `RESEND_API_KEY` / `NOTIFICATION_EMAIL` | no | Email notifications via Resend |
-| `LOG_LEVEL` | no | default `info` |
-| `GRAFANA_USER` / `GRAFANA_PASSWORD` | no | default `admin` / `eventflow` |
+| `RESEND_API_KEY` / `NOTIFICATION_EMAIL` | no | Email via Resend |
+| `LOG_LEVEL` | no | default info |
+| `GRAFANA_USER` / `GRAFANA_PASSWORD` | no | default admin / eventflow |
 
 ---
 
-## Known Limitations & Design Decisions
+## Known Limitations and Design Decisions
 
-These are deliberate scope boundaries, not oversights:
-
-- **Tenant signup flow** — out of scope. Tenants are provisioned via `seed` (local demo) or `POST /api/v1/admin/tenants` (operator-driven). A real SaaS would expose this via a signup UI; the data model (`ApiKey.tenantId`) already supports it.
-- **API key revocation propagation** — up to 60s delay due to auth caching. Acceptable tradeoff, documented above.
-- **Single EC2 instance** — no horizontal scaling/load balancer. Sufficient to demonstrate the architecture; the API/worker separation means scaling each independently (e.g. via ECS or K8s) is a config change, not a redesign.
-- **No Jenkins** — GitHub Actions chosen over self-hosted CI for visibility (public green checkmarks) and zero infrastructure to maintain.
-- **Loki / centralized log aggregation** — not included. Structured JSON logs are ready for it; would be the natural next addition to complete the metrics+logs+traces observability story.
+- **Tenant signup flow** — out of scope. The data model supports it; provisioning is operator-driven via seed or POST /admin/tenants.
+- **API key revocation propagation** — up to 60s delay due to auth cache TTL. Documented tradeoff.
+- **Single EC2 instance** — no load balancer. The API/worker separation means horizontal scaling is a config change, not a redesign.
+- **No Jenkins** — GitHub Actions chosen for visibility and zero infrastructure overhead.
+- **Loki** — not included. Structured JSON logs are ready for Loki ingestion; natural next step to complete metrics + logs + traces.
