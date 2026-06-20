@@ -6,6 +6,67 @@ import { createLogger, metrics } from "@eventflow/shared";
 const healthRouter = Router();
 const logger = createLogger("api:health");
 
+
+
+/**
+ * @openapi
+ * /api/v1/health:
+ *   get:
+ *     summary: Dependency health check
+ *     description: |
+ *       Returns live status of PostgreSQL and Redis.
+ *       Used by Docker healthcheck and load balancers.
+ *       **Do not cache** — must always reflect live dependency state.
+ *     tags: [System]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: All dependencies healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 checks:
+ *                   type: object
+ *                   properties:
+ *                     postgres:
+ *                       type: string
+ *                       example: healthy
+ *                     redis:
+ *                       type: string
+ *                       example: healthy
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *             example:
+ *               status: ok
+ *               checks:
+ *                 postgres: healthy
+ *                 redis: healthy
+ *               timestamp: "2026-06-15T03:13:30.706Z"
+ *       503:
+ *         description: One or more dependencies degraded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: degraded
+ *                 checks:
+ *                   type: object
+ *             example:
+ *               status: degraded
+ *               checks:
+ *                 postgres: unhealthy
+ *                 redis: healthy
+ *               timestamp: "2026-06-15T03:13:30.706Z"
+ */
 healthRouter.get("/health", async (_, res) => {
   const checks = {
     postgres: "unknown",
