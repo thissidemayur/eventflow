@@ -5,6 +5,8 @@ import { metricRouter } from "./routes/metrics.route.js";
 import { healthRouter } from "./routes/health.route.js";
 import { correlationIdMiddleware } from "./middleware/correlationId.js";
 import { adminRouter } from "./routes/admin.route.js";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger.js";
 
 const app = express();
 const logger = createLogger("api:index");
@@ -43,6 +45,27 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(express.json());
 app.set("trust proxy", false); // no proxy use
+
+
+// expose raw spec as JSON - useful for imorting into postman
+app.get("/api/v1/docs/spec",(_,res)=>{
+  return res.json(swaggerSpec)
+})
+
+// swagger UI- interractive API docs
+app.use(
+  "/api/v1/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    customSiteTitle: "Eventflow API Docs",
+    swaggerOptions: {
+      persistAuthorization: true, // keeps API key between page refreshes
+      displayRequestDuration: true, // shows how long each request took
+      filter: true, // search box to filter endpoints
+    },
+  }),
+);
+
 
 // routes
 app.use("/api/v1", eventRouter);
