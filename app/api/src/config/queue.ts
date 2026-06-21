@@ -16,9 +16,11 @@ export const eventQueue = new Queue<EventJob>(QUEUE_NAME, {
   connection,
   defaultJobOptions: {
     attempts: 3,
-    backoff: { 
-      type: "exponential", delay: 1000, jitter: 0.5 //randomizes the delay
-     },
+    backoff: {
+      type: "exponential",
+      delay: 1000,
+      jitter: 0.5, //randomizes the delay
+    },
     removeOnComplete: 100, // keep last 100 completed jobs for debugging
     removeOnFail: 500, //keep last 500 jfailed jobs for inspection
   },
